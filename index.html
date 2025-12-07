@@ -1,467 +1,463 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NIR8 Calculators — Updated</title>
-    <style>
-        /* Basic styling (kept similar to original) */
-        body { font-family: Poppins, sans-serif; margin:0; background: linear-gradient(to right, #4facfe, #00f2fe); }
-        .menu-bar { width:100%; background: rgba(0,0,0,.85); color:#fff; position:fixed; top:0; left:0; z-index:200; padding:10px 0; }
-        .menu-container { max-width:1100px; margin:0 auto; display:flex; gap:16px; align-items:center; padding:0 16px; }
-        .menu-left { display:flex; gap:12px; align-items:center; }
-        .menu-item { color:#fff; padding:6px 12px; cursor:pointer; }
-        .menu-controls { margin-left:auto; display:flex; gap:12px; align-items:center; }
-        input[type=number], select { padding:8px; border-radius:6px; border:1px solid #ddd; font-size:14px; }
-        button { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; background:#28a745; color:#fff; }
-
-        /* Full-screen startup overlay that shows the top-menu controls and blocks the app until user provides Std Qty */
-        #startupOverlay { position:fixed; inset:0; background: linear-gradient(to right, #4facfe, #00f2fe); z-index:1000; display:flex; align-items:center; justify-content:center; }
-        .startup-panel { width:100%; max-width:900px; background:rgba(255,255,255,0.98); padding:22px; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); text-align:left; }
-        .startup-panel h2 { margin-top:0; }
-        .startup-row { display:flex; gap:12px; align-items:center; margin-top:12px; }
-        .startup-row label { font-weight:700; font-size:13px; color:#333; }
-        .startup-note { font-size:13px; color:#444; margin-top:8px; }
-
-        /* Curtain animation - when closing, slide up */
-        .curtain-up { transform: translateY(-120%); transition: transform 520ms cubic-bezier(.2,.9,.3,1); }
-
-        /* Calculator containers */
-        .container { padding:120px 16px 80px 16px; max-width:1100px; margin:0 auto; }
-        .calculator { background:#fff; padding:18px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.12); margin-bottom:18px; }
-        table { width:100%; border-collapse:collapse; }
-        th, td { border:1px solid #ddd; padding:8px; text-align:center; }
-        .hidden { display:none !important; }
-        .acb-input { width:100px; }
-        .action-row { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
-        .info-btn { background:transparent; color:#ff9; border:none; cursor:pointer; text-decoration:underline; }
-
-        footer { position:fixed; bottom:0; left:0; right:0; background:rgba(0,0,0,.85); color:#fff; text-align:center; padding:10px 0; }
-
-        @media (max-width:780px) { .startup-row { flex-direction:column; align-items:flex-start; } .menu-container { padding:0 8px; } }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NIR8 Calculators</title>
+<style>
+  :root { --bg1:#4facfe; --bg2:#00f2fe; --menu-bg:rgba(0,0,0,.85); --accent:#28a745; }
+  *{box-sizing:border-box}
+  body{font-family:Poppins,system-ui,Arial,sans-serif;margin:0;background:linear-gradient(to right,var(--bg1),var(--bg2));min-height:100vh}
+  .menu-bar{position:fixed;top:0;left:0;right:0;background:var(--menu-bg);color:#fff;z-index:1000;padding:10px 12px}
+  .menu-container{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .menu-left{display:flex;gap:8px;align-items:center}
+  .menu-item{padding:6px 10px;cursor:pointer;color:#fff}
+  .menu-item.active{background:#19692f;border-radius:6px}
+  .menu-controls{margin-left:auto;display:flex;gap:10px;align-items:center}
+  label{display:block;font-size:12px;color:#ddd;margin-bottom:4px}
+  input[type=number],select,button{font-size:14px}
+  input[type=number],select{padding:8px;border-radius:6px;border:1px solid #ddd;background:#fff}
+  button{padding:8px 12px;border-radius:6px;border:none;cursor:pointer;background:var(--accent);color:#fff}
+  button.secondary{background:#007bff}
+  .container{padding:110px 16px 80px;max-width:1100px;margin:0 auto}
+  .calculator{background:#fff;border-radius:10px;padding:16px;margin-bottom:18px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  table{width:100%;border-collapse:collapse}
+  th,td{border:1px solid #ddd;padding:8px;text-align:center}
+  .acb-input{width:96px;padding:6px}
+  .hidden{display:none!important}
+  #startupOverlay{position:fixed;inset:0;background:linear-gradient(to right,var(--bg1),var(--bg2));z-index:2000;display:flex;align-items:center;justify-content:center}
+  .startup-panel{width:100%;max-width:920px;background:#fff;padding:22px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+  .curtain-up{transform:translateY(-120%);transition:transform .52s cubic-bezier(.2,.9,.3,1)}
+  footer{position:fixed;left:0;right:0;bottom:0;background:var(--menu-bg);color:#fff;text-align:center;padding:8px;font-size:14px}
+  @media (max-width:820px){ .menu-container{flex-wrap:wrap} .menu-controls{width:100%;justify-content:center} .startup-panel{padding:16px} .acb-input{width:80px} }
+</style>
 </head>
 <body>
 
-    <!-- Top menu bar (remains visible) -->
-    <div class="menu-bar" role="navigation" aria-label="Top menu">
-        <div class="menu-container">
-            <div class="menu-left">
-                <div class="menu-item" id="menuFormula">Formula Calculator</div>
-                <div class="menu-item" id="menuAcb">(A + C) - B Calculator</div>
-            </div>
-
-            <div class="menu-controls" id="topMenuControls">
-                <div>
-                    <label for="stdQty" style="font-size:12px; display:block; color:#ddd;">Std Qty (A) — per lot</label>
-                    <input type="number" id="stdQty" step="0.001" min="0" placeholder="Std Qty (per lot)" aria-label="Std Qty per lot">
-                </div>
-                <div>
-                    <label for="numLots" style="font-size:12px; display:block; color:#ddd;">Lots</label>
-                    <select id="numLots" aria-label="Number of lots">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="totalC" style="font-size:12px; display:block; color:#ddd;">Total Std C (kg)</label>
-                    <input type="number" id="totalC" step="0.001" min="0" placeholder="Total Std C">
-                </div>
-                <div>
-                    <label style="font-size:12px; color:transparent; display:block;">&nbsp;</label>
-                    <button id="distributeBtn">Distribute C</button>
-                </div>
-                <div style="margin-left:8px;">
-                    <button class="info-btn" id="helpBtn">Help</button>
-                </div>
-            </div>
-        </div>
+<!-- Top menu -->
+<div class="menu-bar" role="navigation" aria-label="Top menu">
+  <div class="menu-container">
+    <div class="menu-left">
+      <div class="menu-item active" id="menuFormula" data-target="formula">Formula Calculator</div>
+      <div class="menu-item" id="menuAcb" data-target="acb">(A + C) - B Calculator</div>
     </div>
 
-    <!-- Startup overlay: covers the screen until user enters Std Qty and either presses Enter or clicks Distribute -->
-    <div id="startupOverlay" role="dialog" aria-modal="true">
-        <div class="startup-panel" id="startupPanel">
-            <h2>Setup</h2>
-            <p class="startup-note">Please enter <strong>Std Qty (A)</strong> — this is <em>per lot</em>. Choose number of lots (1–5) and enter the <strong>Total Std C</strong>. When ready click <strong>Distribute C</strong> or press Enter in Std Qty to proceed.</p>
+    <div class="menu-controls" role="region" aria-label="Standard controls">
+      <div>
+        <label for="stdQty">Std Qty (A) — per lot</label>
+        <input id="stdQty" type="number" step="0.001" min="0" placeholder="e.g. 417.000" aria-label="Std Qty per lot">
+      </div>
 
-            <div class="startup-row">
-                <div style="flex:1">
-                    <label for="startupStdQty">Std Qty (A) — per lot</label>
-                    <input id="startupStdQty" type="number" step="0.001" min="0" placeholder="Std Qty per lot">
-                </div>
-                <div>
-                    <label for="startupNumLots">Lots</label>
-                    <select id="startupNumLots">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
-                </div>
-                <div style="flex:1">
-                    <label for="startupTotalC">Total Std C (kg)</label>
-                    <input id="startupTotalC" type="number" step="0.001" min="0" placeholder="Total Std C">
-                </div>
-            </div>
+      <div>
+        <label for="numLots">Lots</label>
+        <select id="numLots" aria-label="Number of lots">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+        </select>
+      </div>
 
-            <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-                <button id="startupDistribute">Distribute C</button>
-            </div>
+      <div>
+        <label for="totalC">Total Std C (kg)</label>
+        <input id="totalC" type="number" step="0.001" min="0" placeholder="Total C">
+      </div>
 
-            <p style="margin-top:12px; font-size:13px; color:#666;">You can change these values later from the top menu anytime — everything is editable.</p>
-        </div>
+      <div style="display:flex;align-items:flex-end">
+        <button id="distributeBtn" title="Distribute C equally">Distribute C</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Startup overlay (blocks until initial setup) -->
+<div id="startupOverlay" role="dialog" aria-modal="true">
+  <div class="startup-panel" id="startupPanel">
+    <h2 style="margin:0 0 8px 0">Setup</h2>
+    <p style="margin:0 0 12px 0;color:#333">Enter <strong>Std Qty (A)</strong> (this is <em>per lot</em>), choose number of lots (1–5) and enter <strong>Total Std C</strong>. Click <strong>Distribute C</strong> or press Enter in the Std Qty field to continue.</p>
+
+    <div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <label for="startupStdQty">Std Qty (A) — per lot</label>
+        <input id="startupStdQty" type="number" step="0.001" min="0" placeholder="e.g. 417.000">
+      </div>
+
+      <div style="min-width:100px">
+        <label for="startupNumLots">Lots</label>
+        <select id="startupNumLots">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+        </select>
+      </div>
+
+      <div style="flex:1;min-width:160px">
+        <label for="startupTotalC">Total Std C (kg)</label>
+        <input id="startupTotalC" type="number" step="0.001" min="0" placeholder="e.g. 337.500">
+      </div>
     </div>
 
-    <main class="container">
-        <!-- Formula calculator (kept minimal) -->
-        <section id="formulaCalculator" class="calculator">
-            <h3>Formula Calculator</h3>
-            <div>
-                <label for="Q">Quantity (Q)</label>
-                <input id="Q" type="number" step="0.001" placeholder="Enter Q">
-            </div>
-            <div style="display:flex; gap:12px; margin-top:8px;">
-                <div><label for="water">Water (W)</label><input id="water" type="number" step="0.01"></div>
-                <div><label for="assay">Assay (A)</label><input id="assay" type="number" step="0.01"></div>
-            </div>
-            <div style="margin-top:12px; display:flex; gap:8px;"><button onclick="calculate('F1')">Calculate F1</button><button onclick="calculate('F2')">Calculate F2</button><button onclick="calculate('F3')">Calculate F3</button></div>
-        </section>
-
-        <!-- A + C - B calculator -->
-        <section id="acbCalculator" class="calculator hidden">
-            <h3>(A + C) - B Calculator</h3>
-
-            <div style="overflow:auto;">
-                <table id="acbTable">
-                    <thead>
-                        <tr id="acbHeaderRow">
-                            <th>Field</th>
-                            <!-- Lot columns will be inserted dynamically -->
-                            <th>Total (kg)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr id="rowA"><td>Std. Qty (A) per lot (editable)</td><!-- A inputs --><td id="totalA">-</td></tr>
-                        <tr id="rowB"><td>Issued Qty (B)</td><!-- B inputs --><td id="totalB">-</td></tr>
-                        <tr id="rowC"><td>Std. Qty (C) per lot (distributed)</td><!-- C inputs --><td id="totalCDisplay">-</td></tr>
-                        <tr id="rowResult"><td>(A + C) - B</td><!-- results --><td id="totalResult">0.000</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="action-row" style="margin-top:10px;">
-                <button onclick="resetACB()">Reset</button>
-                <button onclick="printACB()">Print</button>
-            </div>
-        </section>
-
-        <!-- Calculation steps area (kept simple) -->
-        <div id="calculationSteps" class="calculator hidden">
-            <h3>Calculations</h3>
-            <div id="stepsContainer"></div>
-        </div>
-    </main>
-
-    <footer>
-        This tool is continuously improving. <button id="openHelpFooter" class="info-btn">Help & Shortcuts</button>
-    </footer>
-
-    <!-- Help modal (only opens on click) -->
-    <div id="helpModal" class="hidden" role="dialog" aria-modal="true" style="position:fixed; inset:10% 10%; background:#fff; padding:18px; z-index:1500; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,.25);">
-        <h3>Help & Shortcuts</h3>
-        <p>F1/F2/F3: calculate formulas.</p>
-        <p>Enter Std Qty (A) per lot in the top menu. Choose number of lots and Total Std C — click Distribute C to populate table.</p>
-        <div style="margin-top:12px; text-align:right;"><button onclick="closeHelp()">Close</button></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button id="startupDistribute">Distribute C</button>
     </div>
 
-    <script>
-        // Lightweight decimal handling using built-in Number math with care for 3 decimals
-        function toFixedSafe(val, places = 3) {
-            if (isNaN(val) || val === null || val === undefined) return '0.000';
-            return Number(Math.round((Number(val) + Number.EPSILON) * Math.pow(10, places)) / Math.pow(10, places)).toFixed(places);
-        }
+    <p style="margin-top:12px;color:#666;font-size:13px">You can change these values any time in the top menu — all fields remain editable.</p>
+  </div>
+</div>
 
-        // DOM elements
-        const startupOverlay = document.getElementById('startupOverlay');
-        const startupStdQty = document.getElementById('startupStdQty');
-        const startupNumLots = document.getElementById('startupNumLots');
-        const startupTotalC = document.getElementById('startupTotalC');
-        const startupDistribute = document.getElementById('startupDistribute');
+<main class="container">
 
-        const stdQty = document.getElementById('stdQty');
-        const numLots = document.getElementById('numLots');
-        const totalC = document.getElementById('totalC');
-        const distributeBtn = document.getElementById('distributeBtn');
+  <!-- Formula calculator (kept simple) -->
+  <section id="formulaCalculator" class="calculator" role="region" aria-label="Formula calculator">
+    <h3 style="margin-top:0">Formula Calculator</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:150px">
+        <label for="Q">Quantity (Q)</label>
+        <input id="Q" type="number" step="0.001" placeholder="Enter Q">
+      </div>
+      <div style="min-width:150px">
+        <label for="water">Water (W)</label>
+        <input id="water" type="number" step="0.01" placeholder="W (%)">
+      </div>
+      <div style="min-width:150px">
+        <label for="assay">Assay (A)</label>
+        <input id="assay" type="number" step="0.01" placeholder="A (%)">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button onclick="alert('F1 placeholder')">Calculate F1</button>
+      <button onclick="alert('F2 placeholder')">Calculate F2</button>
+      <button onclick="alert('F3 placeholder')">Calculate F3</button>
+    </div>
+  </section>
 
-        const menuFormula = document.getElementById('menuFormula');
-        const menuAcb = document.getElementById('menuAcb');
-        const formulaCalculator = document.getElementById('formulaCalculator');
-        const acbCalculator = document.getElementById('acbCalculator');
+  <!-- A + C - B calculator -->
+  <section id="acbCalculator" class="calculator hidden" role="region" aria-label="A C B calculator">
+    <h3 style="margin-top:0">(A + C) - B Calculator</h3>
 
-        const acbHeaderRow = document.getElementById('acbHeaderRow');
-        const rowA = document.getElementById('rowA');
-        const rowB = document.getElementById('rowB');
-        const rowC = document.getElementById('rowC');
-        const rowResult = document.getElementById('rowResult');
+    <div style="overflow:auto">
+      <table id="acbTable" aria-describedby="acbDesc">
+        <caption id="acbDesc" class="hidden">Assay-based (A + C) - B calculations</caption>
+        <thead>
+          <tr id="acbHeaderRow">
+            <th>Field</th>
+            <!-- lot headers are inserted dynamically here -->
+            <th>Total (kg)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="rowA"><td>A per lot (editable)</td><!-- A cells --> <td id="totalA">-</td></tr>
+          <tr id="rowB"><td>Issued Qty B</td><!-- B cells --> <td id="totalB">0.000</td></tr>
+          <tr id="rowC"><td>C per lot (distributed, editable)</td><!-- C cells --> <td id="totalCDisplay">0.000</td></tr>
+          <tr id="rowResult"><td>(A + C) - B</td><!-- result cells --> <td id="totalResult">0.000</td></tr>
+        </tbody>
+      </table>
+    </div>
 
-        const totalAEl = document.getElementById('totalA');
-        const totalBEl = document.getElementById('totalB');
-        const totalCDisplay = document.getElementById('totalCDisplay');
-        const totalResultEl = document.getElementById('totalResult');
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button id="resetAcb" style="background:#ff6b6b">Reset</button>
+      <button id="printAcb" class="secondary">Print</button>
+    </div>
+  </section>
 
-        const helpBtn = document.getElementById('helpBtn');
-        const helpModal = document.getElementById('helpModal');
-        const openHelpFooter = document.getElementById('openHelpFooter');
+  <!-- Calculation steps (not used heavily here) -->
+  <div id="calculationSteps" class="hidden"></div>
 
-        // State
-        let currentLots = 1;
-        let aPerLot = 0; // Std qty per lot (A)
-        let totalCValue = 0; // total C
-        let lotElements = []; // array of lot objects {aInput, bInput, cInput, resultCell}
+</main>
 
-        // Initialize menu controls sync
-        stdQty.addEventListener('input', () => { startupStdQty.value = stdQty.value; if (startupOverlay.classList.contains('curtain-up')) { applyAtoLots(); } });
-        numLots.addEventListener('change', () => { startupNumLots.value = numLots.value; adjustLots(Number(numLots.value)); });
-        totalC.addEventListener('input', () => { startupTotalC.value = totalC.value; });
+<footer>Results are reliable but always double-check. NIR8 Tools</footer>
 
-        // Startup overlay interactions: pressing Enter in Std Qty or clicking Distribute proceeds
-        startupStdQty.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                // copy values to top menu and proceed
-                syncStartupToMenu();
-                distributeCAction();
-                closeStartupCurtain();
-            }
-        });
-        startupDistribute.addEventListener('click', () => { syncStartupToMenu(); distributeCAction(); closeStartupCurtain(); });
+<script>
+/*
+  Full functional behavior:
+  - Startup overlay blocks until initial Distribute (or Enter in startupStdQty)
+  - Top menu controls always editable
+  - Distribute C => build lot columns, set A per-lot from StdQty (editable), distribute C equally, last lot absorbs rounding diff
+  - B inputs per lot editable, per-lot result = A + C - B; if B empty, show '-'
+  - Totals update for visible lots only
+  - User can change values later and recalc; pressing Distribute again redistributes C based on current Total Std C and lot count
+*/
 
-        // Distribute button in the top menu
-        distributeBtn.addEventListener('click', () => { syncMenuToStartup(); distributeCAction(); showCalculator('acb'); });
+// small safe formatter to 3 decimals
+function fmt3(v){ 
+  const n = Number(v);
+  if (!isFinite(n)) return '0.000';
+  return (Math.round((n + Number.EPSILON) * 1000) / 1000).toFixed(3);
+}
 
-        // Sync functions
-        function syncStartupToMenu() {
-            stdQty.value = startupStdQty.value || stdQty.value;
-            numLots.value = startupNumLots.value || numLots.value;
-            totalC.value = startupTotalC.value || totalC.value;
-            // immediately reflect
-            aPerLot = Number(stdQty.value || 0);
-            currentLots = Number(numLots.value || 1);
-        }
-        function syncMenuToStartup() {
-            startupStdQty.value = stdQty.value || startupStdQty.value;
-            startupNumLots.value = numLots.value || startupNumLots.value;
-            startupTotalC.value = totalC.value || startupTotalC.value;
-            aPerLot = Number(stdQty.value || 0);
-            currentLots = Number(numLots.value || 1);
-        }
+// DOM refs
+const startupOverlay = document.getElementById('startupOverlay');
+const startupStdQty = document.getElementById('startupStdQty');
+const startupNumLots = document.getElementById('startupNumLots');
+const startupTotalC = document.getElementById('startupTotalC');
+const startupDistribute = document.getElementById('startupDistribute');
 
-        // Close startup overlay with curtain animation
-        function closeStartupCurtain() {
-            startupOverlay.classList.add('curtain-up');
-            // after animation remove from DOM flow
-            setTimeout(() => { startupOverlay.style.display = 'none'; }, 520);
-        }
+const stdQty = document.getElementById('stdQty');
+const numLots = document.getElementById('numLots');
+const totalC = document.getElementById('totalC');
+const distributeBtn = document.getElementById('distributeBtn');
 
-        // Show calculators
-        menuFormula.addEventListener('click', () => showCalculator('formula'));
-        menuAcb.addEventListener('click', () => showCalculator('acb'));
+const menuFormula = document.getElementById('menuFormula');
+const menuAcb = document.getElementById('menuAcb');
+const formulaCalculator = document.getElementById('formulaCalculator');
+const acbCalculator = document.getElementById('acbCalculator');
 
-        function showCalculator(which) {
-            if (which === 'formula') {
-                formulaCalculator.classList.remove('hidden');
-                acbCalculator.classList.add('hidden');
-            } else {
-                acbCalculator.classList.remove('hidden');
-                formulaCalculator.classList.add('hidden');
-            }
-        }
+const acbHeaderRow = document.getElementById('acbHeaderRow');
+const rowA = document.getElementById('rowA');
+const rowB = document.getElementById('rowB');
+const rowC = document.getElementById('rowC');
+const rowResult = document.getElementById('rowResult');
 
-        // Build initial ACB table with up to 5 lot columns
-        function buildACBTable(maxLots = 5) {
-            // Clear existing lot elements if any
-            lotElements = [];
-            // Remove any previous lot header cells between 'Field' and 'Total'
-            // We will rebuild header cells dynamically based on currentLots when distributing
-            // But ensure the header has a placeholder for lot columns
-        }
+const totalAEl = document.getElementById('totalA');
+const totalBEl = document.getElementById('totalB');
+const totalCEl = document.getElementById('totalCDisplay');
+const totalResultEl = document.getElementById('totalResult');
 
-        // Create lot columns (based on currentLots)
-        function adjustLots(n) {
-            currentLots = n;
-            // Remove existing lot columns/cells if present
-            // Recreate header columns after the first TH (Field)
-            // First, clear existing lot header cells (keep first and last)
-            while (acbHeaderRow.cells.length > 2) { acbHeaderRow.deleteCell(1); }
+const resetAcb = document.getElementById('resetAcb');
+const printAcb = document.getElementById('printAcb');
 
-            // Remove existing inputs from rows (cells between first and last)
-            [rowA, rowB, rowC, rowResult].forEach(row => {
-                // remove all cells except first and last
-                while (row.cells.length > 2) { row.deleteCell(1); }
-            });
+let lotElements = []; // {aInput, bInput, cInput, resultCell}
 
-            lotElements = [];
+// helper: clear existing lot columns
+function clearLotColumns(){
+  // remove header cells except first and last
+  while(acbHeaderRow.cells.length > 2) acbHeaderRow.deleteCell(1);
+  // remove data cells for each row except first and last in each row
+  [rowA, rowB, rowC, rowResult].forEach(r => {
+    while(r.cells.length > 2) r.deleteCell(1);
+  });
+  lotElements = [];
+}
 
-            for (let i = 0; i < n; i++) {
-                const th = document.createElement('th');
-                th.textContent = `Lot-${i+1}`;
-                acbHeaderRow.insertBefore(th, acbHeaderRow.cells[acbHeaderRow.cells.length-1]);
+// build columns for n lots
+function buildLots(n){
+  clearLotColumns();
+  for(let i=0;i<n;i++){
+    // header
+    const th = document.createElement('th');
+    th.textContent = 'Lot-' + (i+1);
+    acbHeaderRow.insertBefore(th, acbHeaderRow.cells[acbHeaderRow.cells.length-1]);
 
-                // A input cell
-                const aTd = document.createElement('td');
-                const aInput = document.createElement('input');
-                aInput.type = 'number'; aInput.step = '0.001'; aInput.className = 'acb-input';
-                aInput.value = toFixedSafe(aPerLot);
-                aInput.addEventListener('input', () => { recalcACB(); });
-                aTd.appendChild(aInput);
-                rowA.insertBefore(aTd, rowA.cells[rowA.cells.length-1]);
+    // A cell
+    const aTd = document.createElement('td');
+    const aIn = document.createElement('input');
+    aIn.type = 'number'; aIn.step = '0.001'; aIn.className = 'acb-input'; aIn.placeholder = 'A';
+    aIn.addEventListener('input', onLotInputChange);
+    aTd.appendChild(aIn);
+    rowA.insertBefore(aTd, rowA.cells[rowA.cells.length-1]);
 
-                // B input cell
-                const bTd = document.createElement('td');
-                const bInput = document.createElement('input');
-                bInput.type = 'number'; bInput.step = '0.001'; bInput.className = 'acb-input';
-                bInput.value = '';
-                bInput.addEventListener('input', () => { recalcACB(); });
-                bTd.appendChild(bInput);
-                rowB.insertBefore(bTd, rowB.cells[rowB.cells.length-1]);
+    // B cell
+    const bTd = document.createElement('td');
+    const bIn = document.createElement('input');
+    bIn.type = 'number'; bIn.step = '0.001'; bIn.className = 'acb-input'; bIn.placeholder = 'B';
+    bIn.addEventListener('input', onLotInputChange);
+    bTd.appendChild(bIn);
+    rowB.insertBefore(bTd, rowB.cells[rowB.cells.length-1]);
 
-                // C input cell
-                const cTd = document.createElement('td');
-                const cInput = document.createElement('input');
-                cInput.type = 'number'; cInput.step = '0.001'; cInput.className = 'acb-input';
-                cInput.value = '';
-                cInput.addEventListener('input', () => { recalcACB(); });
-                cTd.appendChild(cInput);
-                rowC.insertBefore(cTd, rowC.cells[rowC.cells.length-1]);
+    // C cell
+    const cTd = document.createElement('td');
+    const cIn = document.createElement('input');
+    cIn.type = 'number'; cIn.step = '0.001'; cIn.className = 'acb-input'; cIn.placeholder = 'C';
+    cIn.addEventListener('input', onLotInputChange);
+    cTd.appendChild(cIn);
+    rowC.insertBefore(cTd, rowC.cells[rowC.cells.length-1]);
 
-                // Result cell
-                const rTd = document.createElement('td');
-                rTd.textContent = '-';
-                rowResult.insertBefore(rTd, rowResult.cells[rowResult.cells.length-1]);
+    // result cell
+    const rTd = document.createElement('td');
+    rTd.textContent = '-';
+    rowResult.insertBefore(rTd, rowResult.cells[rowResult.cells.length-1]);
 
-                lotElements.push({ aInput, bInput, cInput, resultCell: rTd });
-            }
+    lotElements.push({ aInput: aIn, bInput: bIn, cInput: cIn, resultCell: rTd });
+  }
+  recalcTotals(); // init totals
+}
 
-            // Update totals cells (last cells) to be at the end
-            updateTotalsDisplay();
-        }
+// distribute totalC across current lots
+function distributeC(){
+  const n = Number(numLots.value || 1);
+  const stdA = Number(stdQty.value || 0);
+  const tC = Number(totalC.value || 0);
 
-        // Distribute C across currentLots equally, last lot absorbs difference if any
-        function distributeCAction() {
-            aPerLot = Number(stdQty.value || 0);
-            currentLots = Number(numLots.value || 1);
-            totalCValue = Number(totalC.value || 0);
+  // build columns
+  buildLots(n);
 
-            // Build columns for the selected number of lots
-            adjustLots(currentLots);
+  // calculate equal share truncated to 3 decimals and put remainder to last lot
+  if(n <= 0) return;
+  // compute share as truncated toward floor to 3 decimals to keep earlier equal
+  const per = Math.floor((tC / n) * 1000) / 1000;
+  let distributed = Array(n).fill(per);
+  // adjust last lot
+  const sumDistributed = distributed.reduce((s,v)=>s+v,0);
+  let remainder = Number((tC - sumDistributed).toFixed(6));
+  // add remainder to last lot (could be + or -)
+  distributed[n-1] = Number((distributed[n-1] + remainder).toFixed(3));
 
-            // Calculate equal share with 3 decimal rounding and adjust last lot
-            if (currentLots > 0) {
-                const per = Math.floor((totalCValue / currentLots) * 1000) / 1000; // truncate to 3 decimals
-                let distributed = new Array(currentLots).fill(per);
-                // Compute remainder to adjust last lot so sum equals totalCValue
-                const sumDistributed = distributed.reduce((s, v) => s + v, 0);
-                const remainder = Number((totalCValue - sumDistributed).toFixed(6));
-                // remainder will be in range (-0.002, 0.002) normally
-                distributed[distributed.length -1] = Number((distributed[distributed.length -1] + remainder).toFixed(3));
+  // fill A and C, reset B and results
+  lotElements.forEach((lot, idx) => {
+    lot.aInput.value = fmt3(stdA);
+    lot.cInput.value = fmt3(distributed[idx]);
+    lot.bInput.value = ''; // reset issued
+    lot.resultCell.textContent = '-';
+  });
 
-                // Fill C inputs and A inputs (A auto-filled but editable)
-                lotElements.forEach((lot, idx) => {
-                    lot.aInput.value = toFixedSafe(aPerLot);
-                    lot.cInput.value = toFixedSafe(distributed[idx]);
-                    // Reset B for newly created/visible lots
-                    lot.bInput.value = '';
-                    lot.resultCell.textContent = '-';
-                });
+  recalcTotals();
+}
 
-                // Update totals
-                updateTotalsDisplay();
-                recalcACB();
-            }
-        }
+// recalc on any lot input change
+function onLotInputChange(){
+  recalcTotals();
+}
 
-        // Recalculate A+C-B for visible lots
-        function recalcACB() {
-            let totalA = 0, totalB = 0, totalCsum = 0, totalResult = 0;
-            lotElements.forEach((lot, idx) => {
-                const a = Number(lot.aInput.value || 0);
-                const b = Number(lot.bInput.value || 0);
-                const c = Number(lot.cInput.value || 0);
-                totalA += a;
-                totalB += b;
-                totalCsum += c;
-                // Only show result if B is provided (previous behavior had '-' when B empty)
-                if (lot.bInput.value.trim() === '') {
-                    lot.resultCell.textContent = '-';
-                } else {
-                    const res = a + c - b;
-                    lot.resultCell.textContent = toFixedSafe(res);
-                    totalResult += Number(res);
-                }
-            });
+// recalc totals and per-lot results
+function recalcTotals(){
+  let sumA = 0, sumB = 0, sumC = 0, sumResult = 0;
+  lotElements.forEach(lot => {
+    const a = Number(lot.aInput.value || 0);
+    const braw = lot.bInput.value;
+    const b = (braw === '' ? NaN : Number(braw));
+    const c = Number(lot.cInput.value || 0);
 
-            totalAEl.textContent = toFixedSafe(totalA);
-            totalBEl.textContent = toFixedSafe(totalB);
-            totalCDisplay.textContent = toFixedSafe(totalCsum);
-            totalResultEl.textContent = toFixedSafe(totalResult);
-        }
+    sumA += a;
+    if (!isNaN(b)) sumB += b;
+    sumC += c;
 
-        function updateTotalsDisplay() {
-            // Ensure last column totals exist (total cells are already in table last column)
-            // This simply ensures totals show 0 when empty
-            totalAEl.textContent = toFixedSafe(0);
-            totalBEl.textContent = toFixedSafe(0);
-            totalCDisplay.textContent = toFixedSafe(0);
-            totalResultEl.textContent = toFixedSafe(0);
-        }
+    if (braw === '' || isNaN(b)) {
+      lot.resultCell.textContent = '-';
+    } else {
+      const res = a + c - b;
+      lot.resultCell.textContent = fmt3(res);
+      sumResult += Number((Math.round((res + Number.EPSILON)*1000)/1000).toFixed(3));
+    }
+  });
 
-        function resetACB() {
-            if (!confirm('Reset A+C-B calculator?')) return;
-            // clear top menu values but keep startup overlay values in sync
-            // clear lots and rebuild default 1 lot
-            stdQty.value = '';
-            totalC.value = '';
-            numLots.value = '1';
-            adjustLots(1);
-            updateTotalsDisplay();
-        }
+  totalAEl.textContent = fmt3(sumA);
+  totalBEl.textContent = fmt3(sumB);
+  totalCEl.textContent = fmt3(sumC);
+  totalResultEl.textContent = fmt3(sumResult);
+}
 
-        function printACB() {
-            window.print();
-        }
+// sync startup overlay values to top menu
+function syncStartupToMenu(){
+  if (startupStdQty.value !== '') stdQty.value = startupStdQty.value;
+  if (startupNumLots.value) numLots.value = startupNumLots.value;
+  if (startupTotalC.value !== '') totalC.value = startupTotalC.value;
+}
 
-        // Simple formula calculation placeholders (kept minimal so UI flows work)
-        function calculate(type) {
-            alert('Calculation ' + type + ' executed (placeholder).');
-        }
+// sync menu to startup (keeps overlay and menu in sync if user edits menu before closing overlay)
+function syncMenuToStartup(){
+  if (stdQty.value !== '') startupStdQty.value = stdQty.value;
+  if (numLots.value) startupNumLots.value = numLots.value;
+  if (totalC.value !== '') startupTotalC.value = totalC.value;
+}
 
-        // Help modal
-        helpBtn.addEventListener('click', () => { helpModal.classList.remove('hidden'); });
-        openHelpFooter.addEventListener('click', () => { helpModal.classList.remove('hidden'); });
-        function closeHelp() { helpModal.classList.add('hidden'); }
+// close startup overlay with curtain animation
+function closeStartupCurtain(){
+  const panel = document.getElementById('startupPanel');
+  panel.classList.add('curtain-up');
+  // remove overlay after animation
+  setTimeout(() => {
+    startupOverlay.style.display = 'none';
+  }, 520);
+}
 
-        // Initial setup: sync startup values to top menu and build 1 lot
-        // Copy startup values to menu inputs on page load
-        window.addEventListener('load', () => {
-            // Prefill menu from startup fields
-            stdQty.value = startupStdQty.value || '';
-            numLots.value = startupNumLots.value || '1';
-            totalC.value = startupTotalC.value || '';
-            adjustLots(Number(numLots.value || 1));
-            // Keep overlay visible until user enters Std Qty and either presses Enter or distributes
-            // (Overlay remains until user acts)
-        });
+// show appropriate calculator
+function showCalculator(which){
+  if (which === 'formula') {
+    formulaCalculator.classList.remove('hidden');
+    acbCalculator.classList.add('hidden');
+    menuFormula.classList.add('active');
+    menuAcb.classList.remove('active');
+  } else {
+    formulaCalculator.classList.add('hidden');
+    acbCalculator.classList.remove('hidden');
+    menuFormula.classList.remove('active');
+    menuAcb.classList.add('active');
+  }
+}
 
-        // Also allow top menu Distribute/C behavior by pressing Enter in stdQty there
-        stdQty.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                distributeBtn.click();
-            }
-        });
+// initial event wiring
+menuFormula.addEventListener('click', ()=> showCalculator('formula'));
+menuAcb.addEventListener('click', ()=> showCalculator('acb'));
 
-    </script>
+// Distribute handlers (startup and top menu)
+startupDistribute.addEventListener('click', ()=>{
+  syncStartupToMenu();
+  distributeC();
+  closeStartupCurtain();
+  showCalculator('acb');
+});
+
+distributeBtn.addEventListener('click', ()=>{
+  syncMenuToStartup();
+  distributeC();
+  showCalculator('acb');
+});
+
+// allow pressing Enter in startupStdQty to proceed (copy values and distribute)
+startupStdQty.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ syncStartupToMenu(); distributeC(); closeStartupCurtain(); showCalculator('acb'); }
+});
+
+// keep top menu and startup values in sync when user edits top menu before closing overlay
+stdQty.addEventListener('input', ()=> { startupStdQty.value = stdQty.value; });
+numLots.addEventListener('change', ()=> { startupNumLots.value = numLots.value; });
+totalC.addEventListener('input', ()=> { startupTotalC.value = totalC.value; });
+
+// reset behavior
+resetAcb.addEventListener('click', ()=>{
+  if(!confirm('Reset A+C-B calculator? This will clear all lots and values.')) return;
+  // clear top controls but leave overlay hidden (as requested)
+  stdQty.value = '';
+  totalC.value = '';
+  numLots.value = '1';
+  clearLotColumns();
+  recalcTotals();
+});
+
+// print
+printAcb.addEventListener('click', ()=> window.print());
+
+// initialize: build 1 lot but keep overlay shown until user acts
+window.addEventListener('load', ()=>{
+  // prefill menu from startup if available
+  if(startupStdQty.value) stdQty.value = startupStdQty.value;
+  if(startupNumLots.value) numLots.value = startupNumLots.value;
+  if(startupTotalC.value) totalC.value = startupTotalC.value;
+  buildLots(Number(numLots.value || 1));
+  showCalculator('formula'); // default
+});
+
+// keep A inputs updated when top Std Qty is changed: auto-apply to visible lots (but editable)
+stdQty.addEventListener('input', ()=>{
+  const val = stdQty.value;
+  lotElements.forEach(lot => {
+    // only change the value if the user hasn't edited this A (but per spec A is editable always).
+    // We will set A to stdQty (allowing overwrite by user later).
+    lot.aInput.value = (val === '' ? '' : fmt3(Number(val)));
+  });
+  recalcTotals();
+});
+
+// if user changes number of lots in top menu, rebuild columns preserving existing where possible
+numLots.addEventListener('change', ()=>{
+  const n = Number(numLots.value || 1);
+  // If lotElements exists, try to preserve first min(old,n) values
+  const old = lotElements.slice();
+  buildLots(n);
+  // try to copy older values for overlapping indices
+  for(let i=0;i<Math.min(old.length, lotElements.length); i++){
+    lotElements[i].aInput.value = old[i].aInput.value;
+    lotElements[i].bInput.value = old[i].bInput.value;
+    lotElements[i].cInput.value = old[i].cInput.value;
+  }
+  recalcTotals();
+});
+
+// if user edits totalC manually and clicks distribute, it will redistribute
+totalC.addEventListener('change', ()=> {
+  // user must press Distribute to apply; no auto apply on change (keeps control)
+});
+
+// ensure editing any lot input triggers recalc
+function recalc(){ recalcTotals(); }
+
+// End of script
+</script>
+
 </body>
 </html>
