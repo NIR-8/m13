@@ -649,6 +649,137 @@
             color: #4facfe;
             text-decoration: underline;
         }
+        
+        /* Setup Modal Styles */
+        .setup-modal {
+            display: flex;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            align-items: center;
+            justify-content: center;
+        }
+        .setup-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .setup-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .setup-header h2 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+        .setup-header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .setup-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 2px solid #eee;
+            border-radius: 10px;
+        }
+        .setup-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .setup-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+        .setup-label {
+            min-width: 150px;
+            font-weight: 600;
+            color: #555;
+        }
+        .setup-input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .setup-input:focus {
+            border-color: #28a745;
+            outline: none;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+        }
+        .setup-hint {
+            font-size: 12px;
+            color: #777;
+            margin-top: 5px;
+            margin-left: 160px;
+        }
+        .setup-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .setup-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .setup-btn-primary {
+            background-color: #28a745;
+            color: white;
+        }
+        .setup-btn-primary:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        .setup-btn-primary:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .setup-error {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .setup-error.active {
+            display: block;
+        }
+        .same-value-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            margin-left: 160px;
+        }
+        .same-value-checkbox input {
+            width: 18px;
+            height: 18px;
+        }
+        .same-value-checkbox label {
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+        
         @media (max-width: 768px) {
             .calculation-entry {
                 min-height: 180px;
@@ -696,6 +827,20 @@
                 order: 3;
                 width: 100%;
                 justify-content: center;
+                margin-left: 0;
+            }
+            .setup-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .setup-label {
+                min-width: auto;
+                margin-bottom: 5px;
+            }
+            .setup-input {
+                width: 100%;
+            }
+            .setup-hint, .same-value-checkbox {
                 margin-left: 0;
             }
         }
@@ -771,6 +916,18 @@
             .menu-qty-input, .lot-select {
                 width: 80px;
             }
+            .setup-content {
+                padding: 20px;
+            }
+            .setup-section {
+                padding: 15px;
+            }
+            .setup-buttons {
+                flex-direction: column;
+            }
+            .setup-btn {
+                width: 100%;
+            }
         }
 
 
@@ -793,7 +950,7 @@
 
     /* Hide UI elements not needed for printing */
     #mathjax-loading, .acb-notice, .acb-toggle-btn, .calculator-container, .delete-button, .info-btn, 
-    .menu-bar, .print-btn, .progress-container, footer, .reset-acb-btn {
+    .menu-bar, .print-btn, .progress-container, footer, .reset-acb-btn, .setup-modal {
         display: none !important;
     }
 
@@ -900,6 +1057,57 @@
             JavaScript is required to use this calculator. Please enable JavaScript in your browser settings.
         </div>
     </noscript>
+    
+    <!-- Setup Modal -->
+    <div id="setupModal" class="setup-modal">
+        <div class="setup-content">
+            <div class="setup-header">
+                <h2>Initial Setup Required</h2>
+                <p>Please enter the required values to start using the calculators</p>
+            </div>
+            
+            <div class="setup-section">
+                <h3>Standard Theoretical Quantity</h3>
+                <div class="setup-row">
+                    <label class="setup-label">Standard Qty (kg):</label>
+                    <input type="number" id="setupStdQty" class="setup-input" step="0.001" min="0.001" placeholder="Enter standard quantity" required>
+                </div>
+                <div class="setup-hint">This value will be used in the Formula Calculator and (A+C)-B Calculator</div>
+            </div>
+            
+            <div class="setup-section">
+                <h3>Standard C Values for (A+C)-B Calculator</h3>
+                <div class="setup-row">
+                    <label class="setup-label">Lot I C Value:</label>
+                    <input type="number" id="setupLot1C" class="setup-input c-value-input" step="0.001" min="0.001" placeholder="Enter C value">
+                </div>
+                <div class="setup-row">
+                    <label class="setup-label">Lot II C Value:</label>
+                    <input type="number" id="setupLot2C" class="setup-input c-value-input" step="0.001" min="0.001" placeholder="Enter C value">
+                </div>
+                <div class="setup-row">
+                    <label class="setup-label">Lot III C Value:</label>
+                    <input type="number" id="setupLot3C" class="setup-input c-value-input" step="0.001" min="0.001" placeholder="Enter C value">
+                </div>
+                <div class="setup-row">
+                    <label class="setup-label">Lot IV C Value:</label>
+                    <input type="number" id="setupLot4C" class="setup-input c-value-input" step="0.001" min="0.001" placeholder="Enter C value">
+                </div>
+                <div class="same-value-checkbox">
+                    <input type="checkbox" id="sameCValues" checked>
+                    <label for="sameCValues">Set same value for all lots</label>
+                </div>
+                <div class="setup-hint">Default value: 84.375 (recommended)</div>
+            </div>
+            
+            <div id="setupError" class="setup-error">Please fill all required fields with valid values</div>
+            
+            <div class="setup-buttons">
+                <button type="button" id="setupSubmit" class="setup-btn setup-btn-primary" onclick="completeSetup()">Complete Setup & Start</button>
+            </div>
+        </div>
+    </div>
+
     <div class="menu-bar">
         <div class="menu-container">
             <div class="menu-item active" id="menuFormula" onclick='showCalculator("formula")'>Formula Calculator</div>
@@ -978,39 +1186,39 @@
                     <td class="acb-td">Std. Qty (A)<br>kg</td>
                     <td class="acb-td">
                         <label for="lot1-a" class="hidden">Lot 1 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot1-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot1-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot2-a" class="hidden">Lot 2 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot2-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot2-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot3-a" class="hidden">Lot 3 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot3-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot3-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot4-a" class="hidden">Lot 4 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot4-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot4-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
-                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">1668.000</span></td>
+                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">0.000</span></td>
                 </tr>
                 <tr class="acb-highlight-row">
                     <td class="acb-td">Issued Qty (B)<br>kg</td>
                     <td class="acb-td">
                         <label for="lot1-b" class="hidden">Lot 1 Issued Quantity B</label>
-                        <input type="number" step="0.001" id="lot1-b" class="acb-input" placeholder="Issued Qty B">
+                        <input type="number" step="0.001" id="lot1-b" class="acb-input" placeholder="Issued Qty B" disabled>
                     </td>
                     <td class="acb-td">
                         <label for="lot2-b" class="hidden">Lot 2 Issued Quantity B</label>
-                        <input type="number" step="0.001" id="lot2-b" class="acb-input" placeholder="Issued Qty B">
+                        <input type="number" step="0.001" id="lot2-b" class="acb-input" placeholder="Issued Qty B" disabled>
                     </td>
                     <td class="acb-td">
                         <label for="lot3-b" class="hidden">Lot 3 Issued Quantity B</label>
-                        <input type="number" step="0.001" id="lot3-b" class="acb-input" placeholder="Issued Qty B">
+                        <input type="number" step="0.001" id="lot3-b" class="acb-input" placeholder="Issued Qty B" disabled>
                     </td>
                     <td class="acb-td">
                         <label for="lot4-b" class="hidden">Lot 4 Issued Quantity B</label>
-                        <input type="number" step="0.001" id="lot4-b" class="acb-input" placeholder="Issued Qty B">
+                        <input type="number" step="0.001" id="lot4-b" class="acb-input" placeholder="Issued Qty B" disabled>
                     </td>
                     <td class="acb-td"><span id="total-b" class="acb-span acb-prefilled">0.000</span></td>
                 </tr>
@@ -1018,21 +1226,21 @@
                     <td class="acb-td">Std. Qty (C)<br>kg</td>
                     <td class="acb-td">
                         <label for="lot1-c" class="hidden">Lot 1 Standard Quantity C</label>
-                        <input type="number" step="0.001" id="lot1-c" value="84.375" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
+                        <input type="number" step="0.001" id="lot1-c" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
                     </td>
                     <td class="acb-td">
                         <label for="lot2-c" class="hidden">Lot 2 Standard Quantity C</label>
-                        <input type="number" step="0.001" id="lot2-c" value="84.375" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
+                        <input type="number" step="0.001" id="lot2-c" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
                     </td>
                     <td class="acb-td">
                         <label for="lot3-c" class="hidden">Lot 3 Standard Quantity C</label>
-                        <input type="number" step="0.001" id="lot3-c" value="84.375" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
+                        <input type="number" step="0.001" id="lot3-c" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
                     </td>
                     <td class="acb-td">
                         <label for="lot4-c" class="hidden">Lot 4 Standard Quantity C</label>
-                        <input type="number" step="0.001" id="lot4-c" value="84.375" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
+                        <input type="number" step="0.001" id="lot4-c" class="acb-input acb-prefilled" readonly placeholder="Std Qty C">
                     </td>
-                    <td class="acb-td"><span id="total-c" class="acb-span acb-prefilled">337.500</span></td>
+                    <td class="acb-td"><span id="total-c" class="acb-span acb-prefilled">0.000</span></td>
                 </tr>
                 <tr class="acb-highlight-row">
                     <td class="acb-td">(A+C)-(B)<br>kg</td>
@@ -1089,8 +1297,6 @@
             MAX_CALCULATIONS: 15,
             ACB_DEFAULT_A: 417.000,
             ACB_DEFAULT_C: 84.375,
-            ACB_TOTAL_A: 1668.000,
-            ACB_TOTAL_C: 337.500,
             Q_MAX: 9999999,
             W_MAX: 99.99,
             A_MAX: 100.00,
@@ -1124,6 +1330,15 @@
             quantityWarning: document.getElementById("quantityWarning"),
             lotSelect: document.getElementById("lotSelect"),
             lotSelectGroup: document.getElementById("lotSelectGroup"),
+            setupModal: document.getElementById("setupModal"),
+            setupStdQty: document.getElementById("setupStdQty"),
+            setupLot1C: document.getElementById("setupLot1C"),
+            setupLot2C: document.getElementById("setupLot2C"),
+            setupLot3C: document.getElementById("setupLot3C"),
+            setupLot4C: document.getElementById("setupLot4C"),
+            sameCValues: document.getElementById("sameCValues"),
+            setupError: document.getElementById("setupError"),
+            setupSubmit: document.getElementById("setupSubmit"),
             acbInputs: {
                 a: ['lot1-a', 'lot2-a', 'lot3-a', 'lot4-a'].map(id => document.getElementById(id)),
                 b: ['lot1-b', 'lot2-b', 'lot3-b', 'lot4-b'].map(id => document.getElementById(id)),
@@ -1147,6 +1362,163 @@
         let calculations = [];
         let mathJaxQueue = [];
         let mathJaxPending = false;
+        let isSetupComplete = false;
+        let isAutoClosed = false;
+
+        // Setup Modal Functions
+        function initializeSetupModal() {
+            // Set default C values
+            const cInputs = [domCache.setupLot1C, domCache.setupLot2C, domCache.setupLot3C, domCache.setupLot4C];
+            cInputs.forEach(input => {
+                input.value = CONSTANTS.ACB_DEFAULT_C.toFixed(3);
+            });
+            
+            // Focus on first input
+            domCache.setupStdQty.focus();
+            
+            // Setup event listeners
+            domCache.sameCValues.addEventListener('change', function() {
+                if (this.checked) {
+                    const firstValue = domCache.setupLot1C.value;
+                    domCache.setupLot2C.value = firstValue;
+                    domCache.setupLot3C.value = firstValue;
+                    domCache.setupLot4C.value = firstValue;
+                }
+            });
+            
+            // Auto-fill other C inputs when first one changes
+            domCache.setupLot1C.addEventListener('input', function() {
+                if (domCache.sameCValues.checked) {
+                    const value = this.value;
+                    domCache.setupLot2C.value = value;
+                    domCache.setupLot3C.value = value;
+                    domCache.setupLot4C.value = value;
+                }
+            });
+            
+            // Validate inputs on change
+            const setupInputs = [domCache.setupStdQty, ...cInputs];
+            setupInputs.forEach(input => {
+                input.addEventListener('input', validateSetupInputs);
+            });
+            
+            // Allow Enter key to submit
+            setupInputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (validateSetupInputs()) {
+                            completeSetup();
+                        }
+                    }
+                });
+            });
+        }
+        
+        function validateSetupInputs() {
+            const stdQty = domCache.setupStdQty.value.trim();
+            const c1 = domCache.setupLot1C.value.trim();
+            const c2 = domCache.setupLot2C.value.trim();
+            const c3 = domCache.setupLot3C.value.trim();
+            const c4 = domCache.setupLot4C.value.trim();
+            
+            let isValid = true;
+            
+            // Validate Standard Qty
+            if (!stdQty || parseFloat(stdQty) <= 0 || isNaN(parseFloat(stdQty))) {
+                isValid = false;
+                domCache.setupStdQty.style.borderColor = '#ff6b6b';
+            } else {
+                domCache.setupStdQty.style.borderColor = '#ddd';
+            }
+            
+            // Validate C values
+            const cValues = [c1, c2, c3, c4];
+            const cInputs = [domCache.setupLot1C, domCache.setupLot2C, domCache.setupLot3C, domCache.setupLot4C];
+            
+            cValues.forEach((value, index) => {
+                if (!value || parseFloat(value) <= 0 || isNaN(parseFloat(value))) {
+                    isValid = false;
+                    cInputs[index].style.borderColor = '#ff6b6b';
+                } else {
+                    cInputs[index].style.borderColor = '#ddd';
+                }
+            });
+            
+            // Update submit button state
+            domCache.setupSubmit.disabled = !isValid;
+            
+            // Hide error message if valid
+            if (isValid) {
+                domCache.setupError.classList.remove('active');
+            }
+            
+            return isValid;
+        }
+        
+        function completeSetup() {
+            if (!validateSetupInputs()) {
+                domCache.setupError.classList.add('active');
+                return;
+            }
+            
+            // Get values
+            const stdQty = parseFloat(domCache.setupStdQty.value);
+            const c1 = parseFloat(domCache.setupLot1C.value);
+            const c2 = parseFloat(domCache.setupLot2C.value);
+            const c3 = parseFloat(domCache.setupLot3C.value);
+            const c4 = parseFloat(domCache.setupLot4C.value);
+            
+            // Update Standard Qty in menu tracker
+            domCache.stdQtyInput.value = stdQty.toFixed(3);
+            
+            // Update ACB A values (standard quantity divided by 4)
+            const aValue = (stdQty / 4).toFixed(3);
+            domCache.acbInputs.a.forEach(input => {
+                input.value = aValue;
+            });
+            
+            // Update ACB C values
+            const cValues = [c1, c2, c3, c4];
+            domCache.acbInputs.c.forEach((input, index) => {
+                input.value = cValues[index].toFixed(3);
+            });
+            
+            // Calculate totals
+            updateACBTotals();
+            
+            // Enable B inputs in ACB calculator
+            domCache.acbInputs.b.forEach(input => {
+                input.disabled = false;
+            });
+            
+            // Hide setup modal
+            domCache.setupModal.style.display = 'none';
+            isSetupComplete = true;
+            
+            // Focus on Q input
+            domCache.QInput.focus();
+            
+            // Update quantity tracker
+            updateQuantityTracker();
+        }
+        
+        function updateACBTotals() {
+            let totalA = new Decimal(0);
+            let totalC = new Decimal(0);
+            
+            // Calculate A total
+            domCache.acbInputs.a.forEach(input => {
+                totalA = totalA.plus(new Decimal(input.value || 0));
+            });
+            domCache.acbInputs.totals.a.textContent = formatNumber(totalA);
+            
+            // Calculate C total
+            domCache.acbInputs.c.forEach(input => {
+                totalC = totalC.plus(new Decimal(input.value || 0));
+            });
+            domCache.acbInputs.totals.c.textContent = formatNumber(totalC);
+        }
 
         // MathJax readiness
         document.addEventListener('MathJaxReady', () => {
@@ -1464,15 +1836,25 @@ function copyRemainingToQ() {
                 return;
             }
             
-            // Reset standard values
+            // Reset standard values from current setup
+            const stdQty = parseFloat(domCache.stdQtyInput.value) || 0;
+            const aValue = (stdQty / 4).toFixed(3);
+            
             domCache.acbInputs.a.forEach(input => {
-                input.value = CONSTANTS.ACB_DEFAULT_A.toFixed(3);
+                input.value = aValue;
                 input.classList.remove('edited', 'acb-manual-input');
                 input.classList.add('acb-prefilled');
             });
             
-            domCache.acbInputs.c.forEach(input => {
-                input.value = CONSTANTS.ACB_DEFAULT_C.toFixed(3);
+            // Get current C values from setup
+            const c1 = parseFloat(domCache.setupLot1C.value) || CONSTANTS.ACB_DEFAULT_C;
+            const c2 = parseFloat(domCache.setupLot2C.value) || CONSTANTS.ACB_DEFAULT_C;
+            const c3 = parseFloat(domCache.setupLot3C.value) || CONSTANTS.ACB_DEFAULT_C;
+            const c4 = parseFloat(domCache.setupLot4C.value) || CONSTANTS.ACB_DEFAULT_C;
+            const cValues = [c1, c2, c3, c4];
+            
+            domCache.acbInputs.c.forEach((input, index) => {
+                input.value = cValues[index].toFixed(3);
                 input.classList.remove('edited', 'acb-manual-input');
                 input.classList.add('acb-prefilled');
             });
@@ -1484,9 +1866,8 @@ function copyRemainingToQ() {
             });
             
             // Reset totals
-            domCache.acbInputs.totals.a.textContent = CONSTANTS.ACB_TOTAL_A.toFixed(3);
+            updateACBTotals();
             domCache.acbInputs.totals.b.textContent = '0.000';
-            domCache.acbInputs.totals.c.textContent = CONSTANTS.ACB_TOTAL_C.toFixed(3);
             domCache.acbInputs.totals.result.textContent = '0.000';
             
             // Reset results
@@ -1503,6 +1884,13 @@ function copyRemainingToQ() {
 
         // Calculate
         async function calculate(formulaType) {
+            // Check if setup is complete
+            if (!isSetupComplete) {
+                alert("Please complete the initial setup first.");
+                domCache.setupModal.style.display = 'flex';
+                return;
+            }
+            
             // Check if standard quantity is entered
             const stdQty = domCache.stdQtyInput.value.trim();
             if (!stdQty || parseFloat(stdQty) <= 0) {
@@ -1710,6 +2098,13 @@ if (input.id === "water" || input.id === "assay") {
 
         // Show calculator
         function showCalculator(calculator) {
+            // Check if setup is complete
+            if (!isSetupComplete) {
+                alert("Please complete the initial setup first.");
+                domCache.setupModal.style.display = 'flex';
+                return;
+            }
+            
             // Check if trying to switch to formula calculator without standard quantity
             if (calculator === 'formula') {
                 const stdQty = domCache.stdQtyInput.value.trim();
@@ -1736,6 +2131,7 @@ if (input.id === "water" || input.id === "assay") {
         }
       // Modify the showInfo function to prevent reopening if auto-closed
 function showInfo() {
+    if (isAutoClosed) return;
     
     const modal = document.getElementById('infoModal');
     const formulaInfo = document.getElementById('formulaInfo');
@@ -1811,6 +2207,19 @@ function closeModal() {
 
         // ACB Calculator
         function toggleEdit() {
+            // Check if C values are set before allowing edit
+            let allCHaveValues = true;
+            domCache.acbInputs.c.forEach(input => {
+                if (!input.value || input.value.trim() === '') {
+                    allCHaveValues = false;
+                }
+            });
+            
+            if (!allCHaveValues) {
+                alert("Please set all C values in the initial setup before editing.");
+                return;
+            }
+            
             isACBEditingEnabled = !isACBEditingEnabled;
             domCache.toggleEditBtn.textContent = isACBEditingEnabled ? 'Disable Edit' : 'Enable Edit';
             domCache.acbInputs.a.concat(domCache.acbInputs.c).forEach(input => {
@@ -1831,17 +2240,26 @@ function closeModal() {
             try {
                 const value = new Decimal(input.value || 0);
                 if (type === 'a' || type === 'c') {
-                    const original = new Decimal(type === 'a' ? CONSTANTS.ACB_DEFAULT_A : CONSTANTS.ACB_DEFAULT_C);
+                    // For A values, compare with current divided std qty
+                    // For C values, compare with setup values
+                    const originalA = new Decimal(domCache.acbInputs.a[0].value || 0);
+                    const originalC = new Decimal(domCache.acbInputs.c[lotIndex].value || 0);
+                    const original = type === 'a' ? originalA : originalC;
+                    
                     input.classList.toggle('edited', !value.eq(original));
                     input.classList.remove('acb-prefilled');
                     input.classList.add('acb-manual-input');
-                    if (lotIndex === 0) {
-                        domCache.acbInputs[type].slice(1).forEach((otherInput, i) => {
-                            otherInput.value = formatNumber(value);
-                            otherInput.classList.toggle('edited', !value.eq(original));
-                            otherInput.classList.remove('acb-manual-input');
-                            otherInput.classList.add('acb-prefilled');
-                        });
+                    
+                    if (type === 'a' && lotIndex === 0) {
+                        // If editing first A, update all others if in edit mode
+                        if (isACBEditingEnabled) {
+                            domCache.acbInputs.a.slice(1).forEach((otherInput, i) => {
+                                otherInput.value = formatNumber(value);
+                                otherInput.classList.toggle('edited', !value.eq(originalA));
+                                otherInput.classList.remove('acb-manual-input');
+                                otherInput.classList.add('acb-prefilled');
+                            });
+                        }
                     }
                 } else {
                     input.classList.add('acb-manual-input');
@@ -1901,17 +2319,23 @@ function closeModal() {
             domCache.waterGroup.style.display = "none";
             domCache.buttons.style.display = "none";
             domCache.calculationSteps.classList.add("hidden");
-            domCache.QInput.focus();
-
+            
+            // Show setup modal on load
+            domCache.setupModal.style.display = 'flex';
+            initializeSetupModal();
+            
             // Clear the standard quantity input
             domCache.stdQtyInput.value = "";
             
-  // Show help popup on first load
-    setTimeout(() => {
-        showInfo();
-        setTimeout(closeModal, 4000); // Auto-close after 4 seconds
-    }, 500); // Small delay to let page load first
-    
+            // Initialize ACB calculator with empty values
+            domCache.acbInputs.a.forEach(input => {
+                input.value = '';
+            });
+            domCache.acbInputs.c.forEach(input => {
+                input.value = '';
+            });
+            domCache.acbInputs.totals.a.textContent = '0.000';
+            domCache.acbInputs.totals.c.textContent = '0.000';
     
             // Input listeners
             [domCache.QInput, domCache.waterInput, domCache.assayInput].forEach(input => {
@@ -1950,7 +2374,7 @@ function closeModal() {
                             while (nextIndex < inputFields.length) {
                                 if (nextIndex >= inputFields.length) nextIndex = 0;
                                 const nextInput = document.getElementById(inputFields[nextIndex]);
-                                if (nextInput && !nextInput.readOnly) {
+                                if (nextInput && !nextInput.readOnly && !nextInput.disabled) {
                                     nextInput.focus();
                                     break;
                                 }
