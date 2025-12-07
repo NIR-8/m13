@@ -907,7 +907,7 @@
 <div class="menu-qty-tracker">
                 <div class="menu-qty-group">
                     <label for="stdQty" class="menu-qty-label">Std Qty (kg)</label>
-                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0" placeholder="Enter std qty" onchange="updateQuantityTracker()">
+                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0.001" required placeholder="Enter std qty" onchange="updateQuantityTracker()">
                 </div>
                 <div class="menu-qty-group">
                    <label class="menu-qty-label">Dispensed</label>
@@ -1502,7 +1502,15 @@ function copyRemainingToQ() {
         }
 
         // Calculate
-        function calculate(formulaType) {
+        async function calculate(formulaType) {
+            // Check if standard quantity is entered
+            const stdQty = domCache.stdQtyInput.value.trim();
+            if (!stdQty || parseFloat(stdQty) <= 0) {
+                alert("Please enter Standard Quantity (Std Qty) first before performing calculations.");
+                domCache.stdQtyInput.focus();
+                return;
+            }
+            
             if (calculationCount >= CONSTANTS.MAX_CALCULATIONS) {
                 alert(`Maximum of ${CONSTANTS.MAX_CALCULATIONS} calculations reached. Press F5 to reset or delete a calculation.`);
                 return;
@@ -1543,9 +1551,10 @@ function copyRemainingToQ() {
                 return;
             }
 
-            // Add verification step
-            if (!verifyCalculation(calculationResult, Q, W, A)) {
-                return;
+            // Add verification step and wait for user confirmation
+            const isConfirmed = await verifyCalculation(calculationResult, Q, W, A);
+            if (!isConfirmed) {
+                return; // Don't proceed if user cancels
             }
 
             calculations.push(calculationResult);
@@ -1701,20 +1710,30 @@ if (input.id === "water" || input.id === "assay") {
 
         // Show calculator
         function showCalculator(calculator) {
-    domCache.formulaCalculator.classList.toggle('active', calculator === 'formula');
-    domCache.acbCalculator.classList.toggle('active', calculator === 'acb');
-    domCache.menuFormula.classList.toggle('active', calculator === 'formula');
-    domCache.menuAcb.classList.toggle('active', calculator === 'acb');
-    domCache.menuQtyTracker.classList.toggle('hidden', calculator === 'acb');
-    domCache.calculationSteps.classList.toggle('hidden', calculator !== 'formula' || calculationCount === 0);
+            // Check if trying to switch to formula calculator without standard quantity
+            if (calculator === 'formula') {
+                const stdQty = domCache.stdQtyInput.value.trim();
+                if (!stdQty || parseFloat(stdQty) <= 0) {
+                    alert("Please enter Standard Quantity (Std Qty) first before using the Formula Calculator.");
+                    domCache.stdQtyInput.focus();
+                    return;
+                }
+            }
+            
+            domCache.formulaCalculator.classList.toggle('active', calculator === 'formula');
+            domCache.acbCalculator.classList.toggle('active', calculator === 'acb');
+            domCache.menuFormula.classList.toggle('active', calculator === 'formula');
+            domCache.menuAcb.classList.toggle('active', calculator === 'acb');
+            domCache.menuQtyTracker.classList.toggle('hidden', calculator === 'acb');
+            domCache.calculationSteps.classList.toggle('hidden', calculator !== 'formula' || calculationCount === 0);
 
-    // Prevent null reference errors
-    if (calculator === 'formula') {
-        domCache.QInput?.focus();
-    } else if (domCache.acbInputs?.b?.[0]) {
-        domCache.acbInputs.b[0].focus();
-    }
-}
+            // Prevent null reference errors
+            if (calculator === 'formula') {
+                domCache.QInput?.focus();
+            } else if (domCache.acbInputs?.b?.[0]) {
+                domCache.acbInputs.b[0].focus();
+            }
+        }
       // Modify the showInfo function to prevent reopening if auto-closed
 function showInfo() {
     
@@ -1884,6 +1903,9 @@ function closeModal() {
             domCache.calculationSteps.classList.add("hidden");
             domCache.QInput.focus();
 
+            // Clear the standard quantity input
+            domCache.stdQtyInput.value = "";
+            
   // Show help popup on first load
     setTimeout(() => {
         showInfo();
@@ -1989,12 +2011,6 @@ function closeModal() {
 
         // Handle window resize
         window.addEventListener('resize', updatePageNumbers);
-
-// Initialize default std qty
-window.addEventListener("DOMContentLoaded", () => {
-    domCache.stdQtyInput.value = CONSTANTS.ACB_DEFAULT_A.toFixed(3);
-    syncStdQtyToACB(CONSTANTS.ACB_DEFAULT_A);
-});
 
 // Sync std qty to ACB A-values
 function syncStdQtyToACB(value) {
@@ -2150,109 +2166,6 @@ function closeVerifyModal() {
     }
 }
 
-// Modify the calculate function to handle the promise
-async function calculate(formulaType) {
-    if (calculationCount >= CONSTANTS.MAX_CALCULATIONS) {
-        alert(`Maximum of ${CONSTANTS.MAX_CALCULATIONS} calculations reached. Press F5 to reset or delete a calculation.`);
-        return;
-    }
-
-    let Q, W, A;
-    try {
-        Q = new Decimal(domCache.QInput.value || 0);
-        W = new Decimal(domCache.waterInput.value || 0);
-        A = new Decimal(domCache.assayInput.value || 0);
-    } catch {
-        alert("Invalid input values.");
-        return;
-    }
-
-    if (Q.isNaN() || W.isNaN() || A.isNaN() || Q.lte(0) || W.lte(0) || A.lte(0)) {
-        alert("Please enter valid values for Q, W, and A (all must be greater than 0).");
-        return;
-    }
-
-    if (Q.gt(CONSTANTS.Q_MAX)) {
-        alert(`Quantity (Q) must be less than or equal to ${CONSTANTS.Q_MAX}.`);
-        return;
-    }
-
-    if (A.gt(CONSTANTS.A_MAX) || W.gt(CONSTANTS.W_MAX)) {
-        alert("Invalid values: Ensure A ≤ 100 and W ≤ 99.99.");
-        return;
-    }
-
-    hasCalculated = true;
-    let calculationResult;
-    try {
-        calculationResult = createCalculation(formulaType, Q, W, A);
-        if (!calculationResult) throw new Error("Failed to create calculation");
-    } catch {
-        alert("Calculation failed. Please check inputs.");
-        return;
-    }
-
-    // Add verification step and wait for user confirmation
-    const isConfirmed = await verifyCalculation(calculationResult, Q, W, A);
-    if (!isConfirmed) {
-        return; // Don't proceed if user cancels
-    }
-
-    calculations.push(calculationResult);
-    const newEntry = document.createElement("div");
-    newEntry.className = "calculation-entry";
-    newEntry.setAttribute("tabindex", "0");
-    newEntry.setAttribute("role", "region");
-    newEntry.setAttribute("aria-label", `Calculation ${formulaType}`);
-    newEntry.innerHTML = `
-        <button type="button" class="delete-button" onclick="deleteCalculation(this)" title="Delete" aria-label="Delete calculation">❌</button>
-        <div class="lot-label"></div>
-        <div class="reference-values">W="${formatNumber(W, true)}" A="${formatNumber(A, true)}"</div>
-        <div class="calculation-content">${calculationResult.plainText}</div>
-        <div class="page-number">${calculationCount + 1}/${calculationCount + 1}</div>
-        <span class="loading-indicator">Rendering...</span>
-    `;
-
-    domCache.stepsContainer.insertBefore(newEntry, domCache.stepsContainer.firstChild);
-    calculationCount++;
-    domCache.calculationSteps.classList.remove("hidden");
-
-    updatePageNumbers();
-    updateQuantityTracker();
-
-    if (isMathJaxReady) {
-        setTimeout(() => {
-            newEntry.innerHTML = `
-                <button type="button" class="delete-button" onclick="deleteCalculation(this)" title="Delete" aria-label="Delete calculation">❌</button>
-                <div class="lot-label"></div>
-                <div class="reference-values">W="${formatNumber(W, true)}" A="${formatNumber(A, true)}"</div>
-                <div class="calculation-content">${calculationResult.mathJax}</div>
-                <div class="page-number">${calculationCount}/${calculationCount}</div>
-            `;
-            queueMathJax(newEntry);
-        }, 50);
-    } else {
-        newEntry.querySelector('.loading-indicator').style.display = 'block';
-        setTimeout(() => {
-            if (!isMathJaxReady) retryMathJaxLoad();
-        }, CONSTANTS.MATHJAX_TIMEOUT);
-    }
-
-    // Clear inputs after successful calculation
-    setTimeout(() => {
-        domCache.QInput.value = "";
-        domCache.waterInput.value = "";
-        domCache.assayInput.value = "";
-        domCache.progressBar.style.width = "0%";
-        domCache.buttons.style.display = "none";
-        domCache.assayGroup.style.display = "none";
-        domCache.waterGroup.style.display = "none";
-        updateQuantityTracker();
-        domCache.QInput.focus();
-    }, 100);
-
-    newEntry.focus();
-}
 </script>
 <!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "53e0985d4aff4da0956ce2b267a3793f"}'></script><!-- Cloudflare Pages Analytics --></body>
 </html>
