@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light only">
+    <title>NIR8 Calculators</title>
+
+    <!-- MathJax configuration -->
+    <script>
+        MathJax = {
+            loader: { load: ['input/tex', 'output/chtml'] },
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                packages: {'[+]': ['base', 'ams']},
+                processEscapes: true
+            },
+            chtml: { scale: 0.9, mtextInheritFont: true },
+            startup: {
+                typeset: false,
+                pageReady() {
+                    MathJax.startup.defaultPageReady();
+                    document.dispatchEvent(new Event('MathJaxReady'));
+                }
+            }
+        };
+    </script>
+
+    <!-- Load local Decimal.js with fallback -->
+    <script src="decimal.min.js" onerror="loadDecimalFallback()"></script>
+    <script>
+        function loadDecimalFallback() {
+            console.warn('Local Decimal.js failed to load. Attempting to load from CDN...');
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/decimal.js/10.4.3/decimal.min.js';
+            script.async = true;
+            script.onerror = () => {
+                console.error('Failed to load Decimal.js from CDN. Some calculations may not work correctly.');
+                alert('Unable to load Decimal.js. Please check your network connection or ensure the local file is available.');
+            };
+            script.onload = () => {
+                console.log('Decimal.js loaded successfully from CDN.');
+                initializeDecimal();
+            };
+            document.head.appendChild(script);
+        }
+
+        function initializeDecimal() {
+            if (typeof Decimal !== 'undefined') {
+                Decimal.set({ precision: 20, toExpNeg: -9, toExpPos: 20 });
+            }
+        }
+
+        if (typeof Decimal !== 'undefined') {
+            initializeDecimal();
+        }
+    </script>
+
+    <!-- Load local MathJax with fallback -->
+    <script src="assets/mathjax/es5/tex-mml-chtml.js" onerror="loadMathJaxFallback()" async></script>
+    <script>
+        function loadMathJaxFallback(attempt = 1, maxAttempts = 2) {
+            console.warn(`Local MathJax failed to load. Attempting to load from CDN (Attempt ${attempt}/${maxAttempts})...`);
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+            script.async = true;
+            script.onerror = () => {
+                if (attempt < maxAttempts) {
+                    console.warn(`MathJax CDN attempt ${attempt} failed. Retrying...`);
+                    loadMathJaxFallback(attempt + 1, maxAttempts);
+                } else {
+                    console.error('Failed to load MathJax from CDN after multiple attempts.');
+                    alert('Unable to load MathJax. Equations will be displayed as plain text.');
+                    document.getElementById('mathjax-loading').textContent = 'Failed to load equations.';
+                    document.getElementById('mathjax-loading').style.display = 'block';
+                    document.dispatchEvent(new Event('MathJaxReady'));
+                }
+            };
+            script.onload = () => {
+                console.log('MathJax loaded successfully from CDN.');
+                document.getElementById('mathjax-loading').style.display = 'none';
+                MathJax.startup.getComponents();
+            };
+            document.head.appendChild(script);
+        }
+    </script>
+
+   
+    <style>
+        
+        /* Override MathJax .CtxtMenu_Info to fix border-radius and box-shadow order */
+        .CtxtMenu_Info {
+            -webkit-border-radius: 15px;
+            -moz-border-radius: 15px;
+            border-radius: 15px;
+            -webkit-box-shadow: 0px 10px 20px #808080;
+            -moz-box-shadow: 0px 10px 20px #808080;
+            box-shadow: 0px 10px 20px #808080;
+        }
+
+        .menu-bar {
+            width: 100%;
+            background: rgba(0, 0, 0, .8);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 100;
+            padding: 10px 0;
+        }
+        .menu-container {
+            display: flex;
+            max-width: 1000px;
+            width: 100%;
+            padding: 0 20px;
+            align-items: center;
+            gap: 20px;
+        }
+        .menu-item {
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 16px;
+            margin: 0 5px;
+            border-radius: 5px;
+            transition: background .3s ease;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .menu-item:hover {
+            background: rgba(255, 255, 255, .2);
+        }
+        .menu-item.active {
+            background: #28a745;
+        }
+        .menu-qty-tracker {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: auto;
+        }
+        .menu-qty-tracker.hidden {
+            display: none;
+        }
+        .menu-qty-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .menu-qty-input, .lot-select {
+            width: 100px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            text-align: center;
+            background: #fff;
+            color: #000;
+            font-size: 14px;
+        }
+        .menu-qty-input:focus, .lot-select:focus {
+            outline: 0;
+            border-color: #28a745;
+        }
+        .lot-select option {
+            background: #fff;
+            color: #000;
+        }
+        .menu-qty-label {
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 3px;
+        }
+        .menu-qty-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .menu-qty-warning {
+            color: #ff6b6b;
+            font-size: 11px;
+            margin-top: 3px;
+            display: none;
+        }
+        .menu-qty-warning.active {
+            display: block;
+            background: #ff6b6b;
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        body {
+            font-family: Poppins, sans-serif;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            padding: 20px;
+            text-align: center;
+            margin: 0;
+            position: relative;
+            padding-bottom: 60px;
+            padding-top: 80px;
+        }
+        .calculator-container {
+            display: none;
+            background: #fff;
+            padding: 25px;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, .2);
+            margin-bottom: 20px;
+            position: relative;
+        }
+        #acbCalculator {
+            max-width: 1100px;
+        }
+        .calculator-container.active {
+            display: block;
+        }
+        .input-group {
+            margin-top: 10px;
+            text-align: left;
+        }
+        label {
+            font-weight: 600;
+            display: block;
+            color: #444;
+        }
+        input, select {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+        }
+        input:focus, select:focus {
+            border-color: #007bff;
+            outline: 0;
+            box-shadow: 0 0 5px rgba(0, 123, 255, .5);
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        button {
+            background: #28a745;
+            color: #fff;
+            padding: 12px;
+            flex: 1;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            user-select: none;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .hidden[aria-hidden=true] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+        .calculation-steps {
+            margin-top: 20px;
+            padding: 15px;
+            width: 90%;
+            max-width: 900px;
+            background: #fff;
+            border-radius: 0;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .1);
+            color: #555;
+            text-align: left;
+            position: relative;
+            padding-top: 20px;
+            will-change: transform;
+        }
+        .calculation-entry {
+            margin-bottom: 15px;
+            border: 1px solid #000;
+            padding: 15px;
+            position: relative;
+            width: 100%;
+            min-height: 200px;
+            font-size: 14pt;
+            border-radius: 0;
+            box-sizing: border-box;
+            contain: content;
+            overflow: hidden;
+        }
+        .calculation-entry::before {
+            content: "Assay Based Calculation";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #f0f0f0;
+            padding: 5mm;
+            text-align: center;
+            font-size: 16pt;
+            font-weight: 600;
+            border-bottom: 1px solid #000;
+            box-sizing: border-box;
+        }
+        .calculation-entry::after {
+            content: "Remarks: ______________________________________________________________";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #f0f0f0;
+            padding: 5mm;
+            font-size: 14pt;
+            border-top: 1px solid #000;
+            box-sizing: border-box;
+        }
+        .calculation-entry .lot-label::before {
+            content: "LOT: ";
+            position: absolute;
+            top: 24mm;
+            left: 15mm;
+            font-size: 14pt;
+        }
+        .reference-values {
+            position: absolute;
+            top: 24mm;
+            right: 15mm;
+            font-size: 10pt;
+            color: #000;
+            z-index: 10;
+        }
+        .calculation-content {
+            margin-top: 30mm;
+            margin-bottom: 30mm;
+            padding: 0 15mm;
+            overflow: hidden;
+            font-size: 14pt;
+        }
+        .delete-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: red;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-button:hover {
+            color: #c00;
+        }
+        .page-number {
+            position: absolute;
+            bottom: 1mm;
+            right: 4mm;
+            font-size: 8pt;
+            color: #000;
+            font-weight: 700;
+            z-index: 5;
+        }
+        .loading-indicator {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        .input-row .input-group {
+            flex: 1;
+        }
+        .progress-container {
+            width: 100%;
+            background: #ddd;
+            border-radius: 5px;
+            margin-top: 15px;
+            height: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #28a745;
+            transition: width .3s ease-in-out;
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .acb-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 10px 0;
+            font-family: Poppins, sans-serif;
+            table-layout: auto;
+        }
+        .acb-td, .acb-th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            font-size: 14px;
+            min-width: 60px;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+        .acb-th {
+            background-color: #f2f2f2;
+            color: #444;
+            font-weight: 600;
+        }
+        .acb-input {
+            width: calc(100% - 16px);
+            padding: 6px;
+            margin: 2px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            background: transparent;
+            transition: border-color .3s ease;
+        }
+        .acb-input:focus {
+            border-color: #00d403;
+            outline: 0;
+            box-shadow: 0 0 5px rgba(0, 123, 255, .5);
+        }
+        .acb-input.edited {
+            border-color: #ffdc00ba;
+            background-color: #fff;
+        }
+        .acb-input[readonly] {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+        .acb-span {
+            display: block;
+            padding: 6px;
+            font-size: 14px;
+        }
+        .acb-prefilled {
+            color: #1a1a1a;
+        }
+        .acb-manual-input, .acb-output {
+            color: #00f;
+        }
+        .acb-highlight-row {
+            background-color: #e6f3ff;
+        }
+        .acb-notice {
+            text-align: center;
+            background-color: #ffeb3b;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-family: Poppins, sans-serif;
+            font-size: 14px;
+            display: none;
+            margin: 10px auto;
+            width: fit-content;
+        }
+        .acb-toggle-btn {
+            background: #28a745;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background .3s ease;
+        }
+        .acb-toggle-btn:hover {
+            background: #218838;
+        }
+        .acb-toggle-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .print-btn {
+            background: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: none;
+        }
+        .print-btn:hover {
+            background: #0056b3;
+        }
+        .calculation-steps:not(.hidden) .print-btn {
+            display: block;
+        }
+        .error-message {
+            color: #ff6b6b;
+            font-size: 12px;
+            margin-top: 5px;
+            text-align: center;
+        }
+        .reset-acb-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: #ff6b6b;
+            padding: 5px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .reset-acb-btn:hover {
+            background: rgba(255, 107, 107, 0.1);
+            transform: rotate(90deg);
+        }
+        .info-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, .4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+        }
+        .close:hover, .close:focus {
+            color: #000;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .info-section {
+            margin-bottom: 15px;
+        }
+        .info-section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .info-item {
+            margin-bottom: 8px;
+        }
+        .info-key {
+            font-weight: 700;
+            color: #28a745;
+        }
+        .info-footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+        }
+        #mathjax-loading {
+            display: none;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            color: #666;
+            font-size: 14px;
+            font-style: italic;
+            z-index: 1000;
+        }
+        footer {
+            width: 100%;
+            background: rgba(0, 0, 0, .8);
+            color: #fff;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            font-size: 14px;
+            z-index: 5;
+        }
+        .info-btn {
+            background: transparent;
+            border: none;
+            color: #ff9;
+            cursor: pointer;
+            font-weight: 700;
+            padding: 0 5px;
+            text-decoration: underline;
+        }
+        .info-btn:hover {
+            color: #fff;
+        }
+        #remainingQty {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #remainingQty:hover {
+            color: #4facfe;
+            text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            .calculation-entry {
+                min-height: 180px;
+                font-size: 12pt;
+            }
+            .calculation-entry::before {
+                font-size: 14pt;
+                padding: 4mm;
+            }
+            .calculation-entry::after {
+                font-size: 12pt;
+                padding: 4mm;
+                bottom: 8mm;
+            }
+            .calculation-entry .lot-label::before, .reference-values {
+                top: 24mm;
+                font-size: 10pt;
+            }
+            .calculation-content {
+                margin-top: 26mm;
+                margin-bottom: 26mm;
+                font-size: 12pt;
+                padding: 0 10mm;
+            }
+            .page-number {
+                font-size: 10pt;
+                bottom: 2mm;
+                right: 10mm;
+            }
+            .acb-td, .acb-th {
+                font-size: 12px;
+                padding: 6px;
+                min-width: 50px;
+            }
+            .acb-input, .acb-span {
+                font-size: 12px;
+                padding: 4px;
+            }
+            .menu-container {
+                flex-wrap: wrap;
+                gap: 10px;
+                padding: 10px;
+            }
+            .menu-qty-tracker {
+                order: 3;
+                width: 100%;
+                justify-content: center;
+                margin-left: 0;
+            }
+        }
+        @media (max-width: 480px) {
+            .calculation-entry {
+                min-height: 180px;
+                font-size: 10pt;
+            }
+            .calculation-entry::before {
+                font-size: 12pt;
+                padding: 3mm;
+            }
+            .calculation-entry::after {
+                font-size: 10pt;
+                padding: 3mm;
+                bottom: 6mm;
+            }
+            .calculation-entry .lot-label::before {
+                content: "LOT: ";
+                position: absolute;
+                top: 20mm;
+                left: 8mm;
+                font-size: 10pt;
+                width: 100%;
+                text-align: left;
+                z-index: 10;
+            }
+            .reference-values {
+                position: absolute;
+                top: 25mm;
+                left: 8mm;
+                right: auto;
+                font-size: 10pt;
+                text-align: left;
+                width: 100%;
+                z-index: 11;
+            }
+            .calculation-content {
+                margin-top: 28mm;
+                margin-bottom: 22mm;
+                font-size: 10pt;
+                padding: 0 8mm;
+            }
+            .page-number {
+                font-size: 8pt;
+                bottom: 1mm;
+                right: 8mm;
+            }
+            .acb-td, .acb-th {
+                font-size: 10px;
+                padding: 4px;
+                min-width: 40px;
+            }
+            .acb-input, .acb-span {
+                font-size: 10px;
+                padding: 3px;
+            }
+            .calculator-container {
+                width: 100%;
+                padding: 15px;
+            }
+            .acb-input, input {
+                font-size: 14px;
+            }
+            .acb-toggle-btn, button {
+                font-size: 14px;
+                padding: 10px;
+            }
+            .menu-item {
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+            .menu-qty-input, .lot-select {
+                width: 80px;
+            }
+        }
+
+
+      /* GLOBAL RESET FOR BOX-SIZING */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 8mm;
+    }
+
+    body {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+    }
+
+    /* Hide UI elements not needed for printing */
+    #mathjax-loading, .acb-notice, .acb-toggle-btn, .calculator-container, .delete-button, .info-btn, 
+    .menu-bar, .print-btn, .progress-container, footer, .reset-acb-btn {
+        display: none !important;
+    }
+
+    .calculation-steps {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: block !important;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+    }
+
+    .calculation-entry {
+        width: 280mm !important;
+        height: 190mm !important;
+        margin: 0 auto;
+        padding: 0;
+        border: 1px solid #000;
+        font-size: 12pt;
+        position: relative;
+        background: #fff;
+        overflow: hidden;
+        page-break-after: always;
+        /* box-sizing is already set globally */
+    }
+
+    .calculation-entry::before {
+        content: "Assay Based Calculation";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background: #f0f0f0;
+        padding: 5mm;
+        text-align: center;
+        font-size: 16pt;
+        font-weight: 600;
+        border-bottom: 1px solid #000;
+    }
+
+    .calculation-entry::after {
+        content: "Remarks: ______________________________________________________________";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: #f0f0f0;
+        padding: 5mm;
+        font-size: 14pt;
+        border-top: 1px solid #000;
+    }
+
+    .reference-values {
+        position: absolute;
+        top: 20mm;
+        right: 10mm;
+        font-size: 10pt;
+        color: #000;
+        background: #fff;
+        padding: 2px 5px;
+        z-index: 10;
+    }
+
+    .calculation-entry .lot-label::before {
+        content: "LOT: ";
+        position: absolute;
+        top: 24mm;
+        left: 15mm;
+        font-size: 14pt;
+    }
+
+    .calculation-content {
+        margin-top: 30mm;
+        margin-bottom: 30mm;
+        padding: 0 15mm;
+        font-size: 14pt;
+        overflow: hidden;
+        text-align: left;
+    }
+
+    .page-number {
+        position: absolute;
+        bottom: 5mm;
+        right: 5mm;
+        font-size: 8pt;
+        color: #000;
+        font-weight: 700;
+    }
+
+    #stepsContainer {
+        display: flex;
+        flex-direction: column-reverse;
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div id="mathjax-loading">Loading equations...</div>
+    <noscript>
+        <div style="background:#ff6b6b;color:#fff;padding:10px;text-align:center">
+            JavaScript is required to use this calculator. Please enable JavaScript in your browser settings.
+        </div>
+    </noscript>
+    <div class="menu-bar">
+        <div class="menu-container">
+            <div class="menu-item active" id="menuFormula" onclick='showCalculator("formula")'>Formula Calculator</div>
+            <div class="menu-item" id="menuAcb" onclick='showCalculator("acb")'>(A+C)-B Calculator</div>
+            <div class="menu-qty-tracker">
+                <div class="menu-qty-group">
+                    <label for="stdQty" class="menu-qty-label">Std Qty (kg)</label>
+                    <!-- blank by default, mandatory; onchange triggers validation and subsequent UI -->
+                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0.001" placeholder="Enter std qty" onchange="onStdQtyChange()" aria-required="true" />
+                </div>
+                <div class="menu-qty-group">
+                    <label class="menu-qty-label">Dispensed</label>
+                    <div id="dispensedQty" class="menu-qty-value">0.000</div>
+                </div>
+                <div class="menu-qty-group">
+                    <label for="remainingQty" class="menu-qty-label">Remaining</label>
+                    <div id="remainingQty" class="menu-qty-value">0.000</div>
+                    <div id="quantityWarning" class="menu-qty-warning">Qty mismatch!</div>
+                </div>
+                <div class="menu-qty-group" id="lotSelectGroup" style="display: none;">
+                    <label for="lotSelect" class="menu-qty-label">No. of Lots</label>
+                    <select id="lotSelect" class="menu-qty-input" onchange="onLotCountChange()">
+                        <option value="1">1 Lot</option>
+                        <option value="2">2 Lots</option>
+                        <option value="3">3 Lots</option>
+                        <option value="4">4 Lots</option>
+                        <option value="5">5 Lots</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formula Calculator (kept as original) -->
+    <div id="formulaCalculator" class="calculator-container active">
+        <h2>Formula Calculator</h2>
+        <div class="input-group">
+            <label for="Q">Quantity (Q):</label>
+            <input type="number" id="Q" max="9999999" min="0.001" required placeholder="Enter quantity" oninput="handleInput(event)">
+        </div>
+        <div class="input-row">
+            <div class="input-group">
+                <label for="water">Water Content (W):</label>
+                <input type="number" id="water" step="0.01" min="0.01" max="99.99" required placeholder="Enter water content" oninput="handleInput(event)">
+            </div>
+            <div class="input-group">
+                <label for="assay">Assay Content (A):</label>
+                <input type="number" id="assay" step="0.01" min="0.01" max="100.00" required placeholder="Enter assay content" oninput="handleInput(event)">
+            </div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="button-row">
+            <button type="button" onclick='calculate("F1")' aria-label="Calculate F1">Calculate F1</button>
+            <button type="button" onclick='calculate("F2")' aria-label="Calculate F2">Calculate F2</button>
+            <button type="button" onclick='calculate("F3")' aria-label="Calculate F3">Calculate F3</button>
+        </div>
+    </div>
+
+    <!-- (A+C)-B Calculator with support for up to 5 lots -->
+    <div id="acbCalculator" class="calculator-container">
+        <div class="header-row">
+            <h2>(A+C)-B Calculator</h2>
+            <button type="button" class="acb-toggle-btn" id="toggleEditBtn" onclick="toggleEdit()" aria-label="Toggle edit standard quantities">Enable Editing Std qty</button>
+        </div>
+
+        <table class="acb-table" id="acbTable" aria-describedby="acbCaption">
+            <caption id="acbCaption" class="hidden">(A+C)-B Calculator Table</caption>
+            <thead>
+                <tr>
+                    <th class="acb-th" scope="col"></th>
+                    <th class="acb-th" scope="col" data-lot="1">Lot-I</th>
+                    <th class="acb-th" scope="col" data-lot="2">Lot-II</th>
+                    <th class="acb-th" scope="col" data-lot="3">Lot-III</th>
+                    <th class="acb-th" scope="col" data-lot="4">Lot-IV</th>
+                    <th class="acb-th" scope="col" data-lot="5">Lot-V</th>
+                    <th class="acb-th" scope="col">TOTAL (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Std. Qty A row (per-lot) -->
+                <tr>
+                    <td class="acb-td">Std. Qty (A)<br>kg</td>
+                    <td class="acb-td" data-lot="1">
+                        <label for="lot1-a" class="hidden">Lot 1 Standard Quantity A</label>
+                        <input type="number" step="0.001" id="lot1-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                    </td>
+                    <td class="acb-td" data-lot="2">
+                        <label for="lot2-a" class="hidden">Lot 2 Standard Quantity A</label>
+                        <input type="number" step="0.001" id="lot2-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                    </td>
+                    <td class="acb-td" data-lot="3">
+                        <label for="lot3-a" class="hidden">Lot 3 Standard Quantity A</label>
+                        <input type="number" step="0.001" id="lot3-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                    </td>
+                    <td class="acb-td" data-lot="4">
+                        <label for="lot4-a" class="hidden">Lot 4 Standard Quantity A</label>
+                        <input type="number" step="0.001" id="lot4-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                    </td>
+                    <td class="acb-td" data-lot="5">
+                        <label for="lot5-a" class="hidden">Lot 5 Standard Quantity A</label>
+                        <input type="number" step="0.001" id="lot5-a" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                    </td>
+                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">0.000</span></td>
+                </tr>
+
+                <!-- Issued Qty B row (per-lot, editable) -->
+                <tr class="acb-highlight-row">
+                    <td class="acb-td">Issued Qty (B)<br>kg</td>
+                    <td class="acb-td" data-lot="1">
+                        <label for="lot1-b" class="hidden">Lot 1 Issued Quantity B</label>
+                        <input type="number" step="0.001" id="lot1-b" class="acb-input" placeholder="Enter B" oninput="updateTotals()">
+                    </td>
+                    <td class="acb-td" data-lot="2">
+                        <label for="lot2-b" class="hidden">Lot 2 Issued Quantity B</label>
+                        <input type="number" step="0.001" id="lot2-b" class="acb-input" placeholder="Enter B" oninput="updateTotals()">
+                    </td>
+                    <td class="acb-td" data-lot="3">
+                        <label for="lot3-b" class="hidden">Lot 3 Issued Quantity B</label>
+                        <input type="number" step="0.001" id="lot3-b" class="acb-input" placeholder="Enter B" oninput="updateTotals()">
+                    </td>
+                    <td class="acb-td" data-lot="4">
+                        <label for="lot4-b" class="hidden">Lot 4 Issued Quantity B</label>
+                        <input type="number" step="0.001" id="lot4-b" class="acb-input" placeholder="Enter B" oninput="updateTotals()">
+                    </td>
+                    <td class="acb-td" data-lot="5">
+                        <label for="lot5-b" class="hidden">Lot 5 Issued Quantity B</label>
+                        <input type="number" step="0.001" id="lot5-b" class="acb-input" placeholder="Enter B" oninput="updateTotals()">
+                    </td>
+                    <td class="acb-td"><span id="total-b" class="acb-span">0.000</span></td>
+                </tr>
+
+                <!-- C per-lot row (per-lot, editable) -->
+                <tr>
+                    <td class="acb-td">C (per-lot)<br>kg</td>
+                    <td class="acb-td" data-lot="1">
+                        <label for="lot1-c" class="hidden">Lot 1 C</label>
+                        <input type="number" step="0.001" id="lot1-c" class="acb-input" placeholder="Enter C" oninput="syncTotalsFromPerLotC()">
+                    </td>
+                    <td class="acb-td" data-lot="2">
+                        <label for="lot2-c" class="hidden">Lot 2 C</label>
+                        <input type="number" step="0.001" id="lot2-c" class="acb-input" placeholder="Enter C" oninput="syncTotalsFromPerLotC()">
+                    </td>
+                    <td class="acb-td" data-lot="3">
+                        <label for="lot3-c" class="hidden">Lot 3 C</label>
+                        <input type="number" step="0.001" id="lot3-c" class="acb-input" placeholder="Enter C" oninput="syncTotalsFromPerLotC()">
+                    </td>
+                    <td class="acb-td" data-lot="4">
+                        <label for="lot4-c" class="hidden">Lot 4 C</label>
+                        <input type="number" step="0.001" id="lot4-c" class="acb-input" placeholder="Enter C" oninput="syncTotalsFromPerLotC()">
+                    </td>
+                    <td class="acb-td" data-lot="5">
+                        <label for="lot5-c" class="hidden">Lot 5 C</label>
+                        <input type="number" step="0.001" id="lot5-c" class="acb-input" placeholder="Enter C" oninput="syncTotalsFromPerLotC()">
+                    </td>
+                    <td class="acb-td"><span id="total-c" class="acb-span">0.000</span></td>
+                </tr>
+
+                <!-- Controls row: manual Total C input + distribute -->
+                <tr>
+                    <td class="acb-td">Total C (manual)</td>
+                    <td class="acb-td" colspan="5">
+                        <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
+                            <input type="number" step="0.001" id="manualTotalC" class="acb-input acb-manual-input" placeholder="Enter Total C to distribute" oninput="onManualTotalCChange()" />
+                            <button type="button" onclick="distributeManualTotalC()" style="flex:0 0 auto;padding:8px 12px;border-radius:5px;">Distribute C</button>
+                        </div>
+                    </td>
+                    <td class="acb-td"></td>
+                </tr>
+
+                <!-- Result: (A+C)-B per-lot (read-only) -->
+                <tr>
+                    <td class="acb-td">Result (A+C)-B<br>kg</td>
+                    <td class="acb-td" data-lot="1"><span id="lot1-res" class="acb-span acb-output">0.000</span></td>
+                    <td class="acb-td" data-lot="2"><span id="lot2-res" class="acb-span acb-output">0.000</span></td>
+                    <td class="acb-td" data-lot="3"><span id="lot3-res" class="acb-span acb-output">0.000</span></td>
+                    <td class="acb-td" data-lot="4"><span id="lot4-res" class="acb-span acb-output">0.000</span></td>
+                    <td class="acb-td" data-lot="5"><span id="lot5-res" class="acb-span acb-output">0.000</span></td>
+                    <td class="acb-td"><span id="total-res" class="acb-span acb-output">0.000</span></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
+            <button type="button" class="print-btn" onclick="window.print()">Print</button>
+            <button type="button" class="reset-acb-btn" title="Reset ACB" onclick="resetAcb()">⟲</button>
+        </div>
+
+        <div class="calculation-steps" id="stepsContainer" aria-live="polite">
+            <!-- Placeholder for printable calculation entries -->
+            <div class="calculation-entry" id="printPreview">
+                <div class="calculation-content">
+                    <p>Use the controls above to fill Std Qty, select number of lots (1-5), enter issued quantities (B) and C. Then distribute C if required and review the resulting (A+C)-B per lot.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        NIR8 Calculators — &copy; <span id="year"></span> <button class="info-btn" onclick="openInfo()">Info</button>
+    </footer>
+
+    <div id="infoModal" class="info-modal" aria-hidden="true">
+        <div class="modal-content">
+            <span class="close" onclick="closeInfo()">&times;</span>
+            <div class="info-section">
+                <h3>How to use</h3>
+                <div class="info-item"><span class="info-key">Step 1:</span> Enter Std Qty (per-lot) — this field is mandatory.</div>
+                <div class="info-item"><span class="info-key">Step 2:</span> Choose number of lots (1–5). Only selected lots will be visible.</div>
+                <div class="info-item"><span class="info-key">Step 3:</span> Std Qty will be copied to each visible Lot A. Enter Issued (B) and C values.</div>
+                <div class="info-item"><span class="info-key">Step 4:</span> Optional: enter a manual Total C and click "Distribute C" to split it equally among visible lots.</div>
+            </div>
+            <div class="info-footer">Designed for NIR8</div>
+        </div>
+    </div>
+
+    <script>
+        // helper formatting function
+        function fmt(n) {
+            const v = (typeof n === 'number') ? n : parseFloat(n || 0);
+            if (isNaN(v)) return '0.000';
+            return v.toFixed(3);
+        }
+
+        // show/hide calculators (kept simple)
+        function showCalculator(which) {
+            document.getElementById('formulaCalculator').classList.remove('active');
+            document.getElementById('acbCalculator').classList.remove('active');
+            document.getElementById('menuFormula').classList.remove('active');
+            document.getElementById('menuAcb').classList.remove('active');
+            if (which === 'formula') {
+                document.getElementById('formulaCalculator').classList.add('active');
+                document.getElementById('menuFormula').classList.add('active');
+            } else {
+                document.getElementById('acbCalculator').classList.add('active');
+                document.getElementById('menuAcb').classList.add('active');
+            }
+        }
+
+        // toggle allowing editing of Std. Qty A cells (readonly by default)
+        function toggleEdit() {
+            const btn = document.getElementById('toggleEditBtn');
+            const editable = btn.dataset.editable === 'true';
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`lot${i}-a`);
+                if (!el) continue;
+                el.readOnly = editable ? true : false;
+                if (!editable) {
+                    el.classList.add('acb-input', 'edited');
+                } else {
+                    el.classList.remove('acb-input', 'edited');
+                }
+            }
+            btn.dataset.editable = editable ? 'false' : 'true';
+            btn.textContent = editable ? 'Enable Editing Std qty' : 'Disable Editing Std qty';
+        }
+
+        // Called when Std Qty input changes
+        function onStdQtyChange() {
+            const el = document.getElementById('stdQty');
+            const warning = document.getElementById('quantityWarning');
+            const v = parseFloat(el.value);
+            if (!v || v <= 0 || isNaN(v)) {
+                warning.textContent = 'Please enter a valid Std Qty (> 0).';
+                warning.classList.add('active');
+                document.getElementById('lotSelectGroup').style.display = 'none';
+                setStdToLots(null);
+                updateTotals();
+                return;
+            }
+            warning.classList.remove('active');
+            document.getElementById('lotSelectGroup').style.display = 'block';
+            // ensure lotSelect has a value; then update visible lots and copy std
+            onLotCountChange();
+        }
+
+        // Show/hide lot columns based on selected lot count
+        function onLotCountChange() {
+            const count = parseInt(document.getElementById('lotSelect').value || 1, 10);
+            // header ths and all tds that have data-lot attribute
+            const lotCells = document.querySelectorAll('[data-lot]');
+            lotCells.forEach(cell => {
+                const lot = parseInt(cell.getAttribute('data-lot'), 10);
+                if (lot <= count) {
+                    cell.style.display = '';
+                } else {
+                    cell.style.display = 'none';
+                }
+            });
+            // After showing/hiding, copy std into visible lots and reset invisible ones
+            const std = parseFloat(document.getElementById('stdQty').value || 0);
+            setStdToLots(std);
+            updateTotals();
+        }
+
+        // Copy stdValue into visible A inputs; stdValue === null clears them
+        function setStdToLots(stdValue) {
+            const count = parseInt(document.getElementById('lotSelect').value || 1, 10);
+            let total = 0;
+            for (let i = 1; i <= 5; i++) {
+                const input = document.getElementById(`lot${i}-a`);
+                if (!input) continue;
+                const td = input.closest('td') || input.parentElement;
+                if (td && td.style.display === 'none') {
+                    input.value = '';
+                    continue;
+                }
+                if (stdValue && stdValue > 0) {
+                    input.value = fmt(stdValue);
+                    // keep A readonly by default unless toggled via toggleEdit()
+                    input.readOnly = (document.getElementById('toggleEditBtn').dataset.editable !== 'true');
+                    total += parseFloat(input.value);
+                } else {
+                    input.value = '';
+                    input.readOnly = true;
+                }
+            }
+            document.getElementById('total-a').textContent = fmt(total);
+        }
+
+        // Distribute manual total C into visible lots (even split)
+        function distributeManualTotalC() {
+            const manualTotalEl = document.getElementById('manualTotalC');
+            const totalC = parseFloat(manualTotalEl.value || 0);
+            divideTotalCIntoLots(totalC);
+            updateTotals();
+        }
+
+        // Called while typing manual totalC to reflect immediate split (optional)
+        function onManualTotalCChange() {
+            // do not overwrite unless user triggers distribute; but we can preview split
+            const totalC = parseFloat(document.getElementById('manualTotalC').value || 0);
+            if (!totalC || totalC <= 0) {
+                // clear per-lot C preview
+                for (let i = 1; i <= 5; i++) {
+                    const el = document.getElementById(`lot${i}-c`);
+                    if (el) el.value = '';
+                }
+                updateTotals();
+                return;
+            }
+            // preview split (but keep it editable)
+            divideTotalCIntoLots(totalC);
+            updateTotals();
+        }
+
+        // Divides totalC equally among visible lots (uses Decimal if available)
+        function divideTotalCIntoLots(totalC) {
+            if (!totalC || totalC <= 0) {
+                for (let i = 1; i <= 5; i++) {
+                    const el = document.getElementById(`lot${i}-c`);
+                    if (el) el.value = '';
+                }
+                return;
+            }
+            const count = Array.from(document.querySelectorAll('[data-lot]'))
+                .map(n => parseInt(n.getAttribute('data-lot'), 10))
+                .filter(x => x > 0)
+                .reduce((acc, lot) => Math.max(acc, lot), 0); // but we'll use lotSelect value instead
+            const visibleCount = parseInt(document.getElementById('lotSelect').value || 1, 10);
+            const DecimalAvailable = (typeof Decimal !== 'undefined');
+            const share = DecimalAvailable ? new Decimal(totalC).div(visibleCount) : (totalC / visibleCount);
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`lot${i}-c`);
+                const td = el && el.closest ? el.closest('td') : (el ? el.parentElement : null);
+                if (!el) continue;
+                if (td && td.style.display === 'none') {
+                    el.value = '';
+                    continue;
+                }
+                const v = DecimalAvailable ? share.toFixed(3) : (typeof share.toFixed === 'function' ? share.toFixed(3) : parseFloat(share).toFixed(3));
+                el.value = v;
+            }
+        }
+
+        // Update totals for B and C, update dispensed and remaining, compute (A+C)-B results
+        function updateTotals() {
+            // total A (recompute in case Std or lot visibility changed)
+            let totalA = 0;
+            for (let i = 1; i <= 5; i++) {
+                const aEl = document.getElementById(`lot${i}-a`);
+                if (!aEl) continue;
+                const td = aEl.closest('td') || aEl.parentElement;
+                if (td && td.style.display === 'none') continue;
+                const aval = parseFloat(aEl.value || 0);
+                totalA += isNaN(aval) ? 0 : aval;
+            }
+            document.getElementById('total-a').textContent = fmt(totalA);
+
+            // total B
+            let totalB = 0;
+            for (let i = 1; i <= 5; i++) {
+                const bEl = document.getElementById(`lot${i}-b`);
+                if (!bEl) continue;
+                const td = bEl.closest('td') || bEl.parentElement;
+                if (td && td.style.display === 'none') continue;
+                const bval = parseFloat(bEl.value || 0);
+                totalB += isNaN(bval) ? 0 : bval;
+            }
+            document.getElementById('total-b').textContent = fmt(totalB);
+
+            // total C (sum of per-lot C inputs)
+            let totalC = 0;
+            for (let i = 1; i <= 5; i++) {
+                const cEl = document.getElementById(`lot${i}-c`);
+                if (!cEl) continue;
+                const td = cEl.closest('td') || cEl.parentElement;
+                if (td && td.style.display === 'none') continue;
+                const cval = parseFloat(cEl.value || 0);
+                totalC += isNaN(cval) ? 0 : cval;
+            }
+            document.getElementById('total-c').textContent = fmt(totalC);
+
+            // Update menu trackers: dispensed (B) and remaining (totalA - totalB)
+            document.getElementById('dispensedQty').textContent = fmt(totalB);
+            const remaining = totalA - totalB;
+            document.getElementById('remainingQty').textContent = fmt(remaining >= 0 ? remaining : 0);
+
+            // quantity warning if dispensed > totalA
+            const warning = document.getElementById('quantityWarning');
+            if (totalB > totalA) {
+                warning.textContent = 'Dispensed exceeds total Std Qty!';
+                warning.classList.add('active');
+            } else {
+                if (warning.classList.contains('active')) {
+                    // only clear custom warnings, leave Std validation message if present separately
+                    if (warning.textContent === 'Dispensed exceeds total Std Qty!') {
+                        warning.classList.remove('active');
+                    }
+                }
+            }
+
+            // Compute result per-lot: (A + C) - B
+            let totalRes = 0;
+            for (let i = 1; i <= 5; i++) {
+                const td = document.querySelector(`[data-lot="${i}"]`);
+                // We need to find if visible - note header cell may be present; find lot1-res etc.
+                const resSpan = document.getElementById(`lot${i}-res`);
+                if (!resSpan) continue;
+                // If column hidden, clear result
+                if (td && td.style && td.style.display === 'none') {
+                    resSpan.textContent = fmt(0);
+                    continue;
+                }
+                const a = parseFloat((document.getElementById(`lot${i}-a`) || { value: 0 }).value || 0);
+                const c = parseFloat((document.getElementById(`lot${i}-c`) || { value: 0 }).value || 0);
+                const b = parseFloat((document.getElementById(`lot${i}-b`) || { value: 0 }).value || 0);
+                const res = (isNaN(a) ? 0 : a) + (isNaN(c) ? 0 : c) - (isNaN(b) ? 0 : b);
+                resSpan.textContent = fmt(res);
+                totalRes += res;
+            }
+            document.getElementById('total-res').textContent = fmt(totalRes);
+        }
+
+        // syncTotalsFromPerLotC: when user edits per-lot C, recalc totals and clear manual totalC if mismatch
+        function syncTotalsFromPerLotC() {
+            // If manualTotalC was present, clear it to avoid confusion
+            const manualTotalEl = document.getElementById('manualTotalC');
+            if (manualTotalEl && manualTotalEl.value) {
+                // Do not overwrite the per-lot values, but let manualTotalC remain if user wants — here we simply keep manual value and update totals.
+                // Optionally, clear manualTotalC to indicate per-lot editing: manualTotalEl.value = '';
+            }
+            updateTotals();
+        }
+
+        // Reset ACB table to defaults (clears B, C and results; keeps Std and lot selection)
+        function resetAcb() {
+            document.getElementById('manualTotalC').value = '';
+            for (let i = 1; i <= 5; i++) {
+                const b = document.getElementById(`lot${i}-b`);
+                const c = document.getElementById(`lot${i}-c`);
+                const res = document.getElementById(`lot${i}-res`);
+                if (b) b.value = '';
+                if (c) c.value = '';
+                if (res) res.textContent = fmt(0);
+            }
+            document.getElementById('total-b').textContent = fmt(0);
+            document.getElementById('total-c').textContent = fmt(0);
+            document.getElementById('total-res').textContent = fmt(0);
+            document.getElementById('dispensedQty').textContent = fmt(0);
+            document.getElementById('remainingQty').textContent = fmt(0);
+        }
+
+        // Info modal helper
+        function openInfo() {
+            document.getElementById('infoModal').style.display = 'block';
+            document.getElementById('infoModal').setAttribute('aria-hidden', 'false');
+        }
+        function closeInfo() {
+            document.getElementById('infoModal').style.display = 'none';
+            document.getElementById('infoModal').setAttribute('aria-hidden', 'true');
+        }
+
+        // Minimal stubs for formula calc so page doesn't error if buttons pressed
+        function handleInput(e) {
+            // placeholder if needed
+        }
+        function calculate(which) {
+            alert('Formula calculate (' + which + ') not implemented in this upload. Use A+C-B calculator for lot operations.');
+        }
+
+        // Initialization on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            // Year in footer
+            document.getElementById('year').textContent = new Date().getFullYear();
+
+            // Ensure lotSelectGroup hidden until valid std qty entered (already hidden from HTML)
+            // Ensure toggleEditBtn has dataset set
+            document.getElementById('toggleEditBtn').dataset.editable = 'false';
+
+            // Initialize lot columns according to default lotSelect (1)
+            onLotCountChange();
+
+            // Attach input listeners to B and C fields (already attached inline, but ensure)
+            for (let i = 1; i <= 5; i++) {
+                const b = document.getElementById(`lot${i}-b`);
+                const c = document.getElementById(`lot${i}-c`);
+                if (b) b.addEventListener('input', updateTotals);
+                if (c) c.addEventListener('input', syncTotalsFromPerLotC);
+            }
+
+            // If Decimal already loaded, set precision
+            if (typeof Decimal !== 'undefined') {
+                initializeDecimal();
+            }
+        });
+    </script>
+</body>
+</html>
