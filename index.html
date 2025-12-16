@@ -232,6 +232,14 @@
             display: block;
             color: #444;
         }
+        
+/* Optional: make disabled inputs visibly disabled */
+input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+    border-color: #eee;
+}
+
         input, select {
             width: calc(100% - 20px);
             padding: 10px;
@@ -908,7 +916,7 @@
 <div class="menu-qty-tracker">
                 <div class="menu-qty-group">
                     <label for="stdQty" class="menu-qty-label">Std Qty (kg)</label>
-                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0" placeholder="Enter std qty" onchange="updateQuantityTracker()">
+                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0" placeholder="Enter std qty" onchange="updateQuantityTracker()" required>
                 </div>
                 <div class="menu-qty-group">
                    <label class="menu-qty-label">Dispensed</label>
@@ -979,21 +987,21 @@
                     <td class="acb-td">Std. Qty (A)<br>kg</td>
                     <td class="acb-td">
                         <label for="lot1-a" class="hidden">Lot 1 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot1-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot1-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot2-a" class="hidden">Lot 2 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot2-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot2-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot3-a" class="hidden">Lot 3 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot3-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot3-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot4-a" class="hidden">Lot 4 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot4-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot4-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
-                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">1668.000</span></td>
+                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">0.000</span></td>
                 </tr>
                 <tr class="acb-highlight-row">
                     <td class="acb-td">Issued Qty (B)<br>kg</td>
@@ -1125,6 +1133,7 @@
             quantityWarning: document.getElementById("quantityWarning"),
             lotSelect: document.getElementById("lotSelect"),
             lotSelectGroup: document.getElementById("lotSelectGroup"),
+            menuQtyTracker: document.querySelector('.menu-qty-tracker'),
             acbInputs: {
                 a: ['lot1-a', 'lot2-a', 'lot3-a', 'lot4-a'].map(id => document.getElementById(id)),
                 b: ['lot1-b', 'lot2-b', 'lot3-b', 'lot4-b'].map(id => document.getElementById(id)),
@@ -1709,12 +1718,15 @@ if (input.id === "water" || input.id === "assay") {
     domCache.menuQtyTracker.classList.toggle('hidden', calculator === 'acb');
     domCache.calculationSteps.classList.toggle('hidden', calculator !== 'formula' || calculationCount === 0);
 
-    // Prevent null reference errors
-    if (calculator === 'formula') {
-        domCache.QInput?.focus();
-    } else if (domCache.acbInputs?.b?.[0]) {
-        domCache.acbInputs.b[0].focus();
-    }
+    
+if (calculator === 'formula') {
+    // If Std Qty isn’t valid yet, focus it first
+    const val = parseFloat(domCache.stdQtyInput.value || 0);
+    const isValid = !isNaN(val) && val > 0;
+    (isValid ? domCache.QInput : domCache.stdQtyInput)?.focus();
+} else if (domCache.acbInputs?.b?.[0]) {
+    domCache.acbInputs.b[0].focus();
+}
 }
       // Modify the showInfo function to prevent reopening if auto-closed
 function showInfo() {
@@ -1877,15 +1889,42 @@ function closeModal() {
             window.print();
         }
 
-        // Initialize
-        document.addEventListener("DOMContentLoaded", () => {
-            domCache.assayGroup.style.display = "none";
-            domCache.waterGroup.style.display = "none";
-            domCache.buttons.style.display = "none";
-            domCache.calculationSteps.classList.add("hidden");
-            domCache.QInput.focus();
+        
+document.addEventListener("DOMContentLoaded", () => {
+    domCache.assayGroup.style.display = "none";
+    domCache.waterGroup.style.display = "none";
+    domCache.buttons.style.display = "none";
+    domCache.calculationSteps.classList.add("hidden");
 
-  
+    // Block Formula inputs until Std Qty is provided
+    domCache.QInput.disabled = true;
+    domCache.waterInput.disabled = true;
+    domCache.assayInput.disabled = true;
+
+    // Focus Std Qty first
+    domCache.stdQtyInput.focus();
+
+    // When Std Qty becomes valid (>0), enable Q
+    domCache.stdQtyInput.addEventListener('input', () => {
+        const val = parseFloat(domCache.stdQtyInput.value || 0);
+        const isValid = !isNaN(val) && val > 0;
+        domCache.QInput.disabled = !isValid;
+        domCache.waterInput.disabled = !isValid;
+        domCache.assayInput.disabled = !isValid;
+        if (isValid) domCache.QInput.focus();
+    });
+
+    // (keep the rest of your existing listeners below)
+    ...
+});
+
+
+  // Show help popup on first load
+    setTimeout(() => {
+        showInfo();
+        setTimeout(closeModal, 4000); // Auto-close after 4 seconds
+    }, 500); // Small delay to let page load first
+    
     
             // Input listeners
             [domCache.QInput, domCache.waterInput, domCache.assayInput].forEach(input => {
@@ -1986,10 +2025,7 @@ function closeModal() {
         // Handle window resize
         window.addEventListener('resize', updatePageNumbers);
 
-// Initialize default std qty
-window.addEventListener("DOMContentLoaded", () => {
-    domCache.stdQtyInput.value = CONSTANTS.ACB_DEFAULT_A.toFixed(3);
-    syncStdQtyToACB(CONSTANTS.ACB_DEFAULT_A);
+
 });
 
 // Sync std qty to ACB A-values
@@ -2147,10 +2183,23 @@ function closeVerifyModal() {
 }
 
 // Modify the calculate function to handle the promise
+
 async function calculate(formulaType) {
+    // Require Std Qty before any formula calculation
+    const stdVal = parseFloat(domCache.stdQtyInput.value || 0);
+    if (isNaN(stdVal) || stdVal <= 0) {
+        alert("Please enter a valid Std Qty (kg) before calculating.");
+        domCache.stdQtyInput.focus();
+        return;
+    }
+
     if (calculationCount >= CONSTANTS.MAX_CALCULATIONS) {
         alert(`Maximum of ${CONSTANTS.MAX_CALCULATIONS} calculations reached. Press F5 to reset or delete a calculation.`);
         return;
+    }
+    ...
+}
+
     }
 
     let Q, W, A;
