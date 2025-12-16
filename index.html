@@ -232,14 +232,6 @@
             display: block;
             color: #444;
         }
-        
-/* Optional: make disabled inputs visibly disabled */
-input:disabled {
-    background: #f5f5f5;
-    cursor: not-allowed;
-    border-color: #eee;
-}
-
         input, select {
             width: calc(100% - 20px);
             padding: 10px;
@@ -913,11 +905,13 @@ input:disabled {
         <div class="menu-container">
             <div class="menu-item active" id="menuFormula" onclick='showCalculator("formula")'>Formula Calculator</div>
             <div class="menu-item" id="menuAcb" onclick='showCalculator("acb")'>(A+C)-B Calculator</div>
-<div class="menu-qty-tracker">
-                <div class="menu-qty-group">
-                    <label for="stdQty" class="menu-qty-label">Std Qty (kg)</label>
-                    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0" placeholder="Enter std qty" onchange="updateQuantityTracker()" required>
-                </div>
+<div class="menu-qty-group">
+    <label for="stdQty" class="menu-qty-label">Theoretical Qty per Lot (kg)</label>
+    <input type="number" id="stdQty" class="menu-qty-input" step="0.001" min="0" value="" placeholder="Required" required>
+</div>
+<div id="theoreticalQtyWarning" class="menu-qty-warning" style=" 5px; display: none;">
+    ⚠️ Please enter Theoretical Qty per Lot first
+</div>
                 <div class="menu-qty-group">
                    <label class="menu-qty-label">Dispensed</label>
                     <div id="dispensedQty" class="menu-qty-value">0.000</div>
@@ -939,7 +933,6 @@ input:disabled {
                 </div>
             </div>
         </div>
-    </div>
     <div id="formulaCalculator" class="calculator-container active">
         <h2>Formula Calculator</h2>
         <div class="input-group">
@@ -987,21 +980,21 @@ input:disabled {
                     <td class="acb-td">Std. Qty (A)<br>kg</td>
                     <td class="acb-td">
                         <label for="lot1-a" class="hidden">Lot 1 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot1-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot1-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot2-a" class="hidden">Lot 2 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot2-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot2-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot3-a" class="hidden">Lot 3 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot3-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot3-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
                     <td class="acb-td">
                         <label for="lot4-a" class="hidden">Lot 4 Standard Quantity A</label>
-                        <input type="number" step="0.001" id="lot4-a" value="" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
+                        <input type="number" step="0.001" id="lot4-a" value="417.000" class="acb-input acb-prefilled" readonly placeholder="Std Qty A">
                     </td>
-                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">0.000</span></td>
+                    <td class="acb-td"><span id="total-a" class="acb-span acb-prefilled">1668.000</span></td>
                 </tr>
                 <tr class="acb-highlight-row">
                     <td class="acb-td">Issued Qty (B)<br>kg</td>
@@ -1133,7 +1126,6 @@ input:disabled {
             quantityWarning: document.getElementById("quantityWarning"),
             lotSelect: document.getElementById("lotSelect"),
             lotSelectGroup: document.getElementById("lotSelectGroup"),
-            menuQtyTracker: document.querySelector('.menu-qty-tracker'),
             acbInputs: {
                 a: ['lot1-a', 'lot2-a', 'lot3-a', 'lot4-a'].map(id => document.getElementById(id)),
                 b: ['lot1-b', 'lot2-b', 'lot3-b', 'lot4-b'].map(id => document.getElementById(id)),
@@ -1385,6 +1377,25 @@ input:disabled {
     let dispensed = new Decimal(0);
     let remainingCalc = new Decimal(0);
     let hasFinalCalculations = false;
+
+function checkTheoreticalQty() {
+    const theoreticalQty = domCache.stdQtyInput.value.trim();
+    const isFilled = theoreticalQty !== "" && parseFloat(theoreticalQty) > 0;
+    const warning = document.getElementById("theoreticalQtyWarning");
+if (warning) {
+    warning.style.display = isFilled ? "none" : "block";
+}
+
+    // Enable/disable Q input
+    domCache.QInput.disabled = !isFilled;
+
+    // Optional: visual feedback
+    if (!isFilled) {
+        domCache.QInput.placeholder = "Enter Theoretical Qty per Lot first";
+    } else {
+        domCache.QInput.placeholder = "Enter quantity";
+    }
+}
 
     calculations.forEach(calc => {
         if (calc.formulaType === "F2") {
@@ -1718,15 +1729,12 @@ if (input.id === "water" || input.id === "assay") {
     domCache.menuQtyTracker.classList.toggle('hidden', calculator === 'acb');
     domCache.calculationSteps.classList.toggle('hidden', calculator !== 'formula' || calculationCount === 0);
 
-    
-if (calculator === 'formula') {
-    // If Std Qty isn’t valid yet, focus it first
-    const val = parseFloat(domCache.stdQtyInput.value || 0);
-    const isValid = !isNaN(val) && val > 0;
-    (isValid ? domCache.QInput : domCache.stdQtyInput)?.focus();
-} else if (domCache.acbInputs?.b?.[0]) {
-    domCache.acbInputs.b[0].focus();
-}
+    // Prevent null reference errors
+    if (calculator === 'formula') {
+        domCache.QInput?.focus();
+    } else if (domCache.acbInputs?.b?.[0]) {
+        domCache.acbInputs.b[0].focus();
+    }
 }
       // Modify the showInfo function to prevent reopening if auto-closed
 function showInfo() {
@@ -1889,35 +1897,34 @@ function closeModal() {
             window.print();
         }
 
-        
-document.addEventListener("DOMContentLoaded", () => {
-    domCache.assayGroup.style.display = "none";
-    domCache.waterGroup.style.display = "none";
-    domCache.buttons.style.display = "none";
-    domCache.calculationSteps.classList.add("hidden");
-
-    // Block Formula inputs until Std Qty is provided
-    domCache.QInput.disabled = true;
-    domCache.waterInput.disabled = true;
-    domCache.assayInput.disabled = true;
-
-    // Focus Std Qty first
-    domCache.stdQtyInput.focus();
-
-    // When Std Qty becomes valid (>0), enable Q
-    domCache.stdQtyInput.addEventListener('input', () => {
-        const val = parseFloat(domCache.stdQtyInput.value || 0);
-        const isValid = !isNaN(val) && val > 0;
-        domCache.QInput.disabled = !isValid;
-        domCache.waterInput.disabled = !isValid;
-        domCache.assayInput.disabled = !isValid;
-        if (isValid) domCache.QInput.focus();
-    });
-
-    // (keep the rest of your existing listeners below)
-    ...
+        // Initialize
+        document.addEventListener("DOMContentLoaded", () => {
+            domCache.assayGroup.style.display = "none";
+            domCache.waterGroup.style.display = "none";
+            domCache.buttons.style.display = "none";
+            domCache.calculationSteps.classList.add("hidden");
+            domCache.QInput.focus();
+            domCache.stdQtyInput.addEventListener('input', () => {
+    validateInput(domCache.stdQtyInput);
+    updateQuantityTracker();
+    checkTheoreticalQty();  // <-- Add this
+    const val = domCache.stdQtyInput.value;
+    if (val && parseFloat(val) > 0) {
+        syncStdQtyToACB(parseFloat(val));
+    } else {
+        // Clear A values if theoretical qty is cleared
+        domCache.acbInputs.a.forEach(input => {
+            input.value = "";
+            input.classList.remove('acb-prefilled', 'edited');
+        });
+        domCache.acbInputs.totals.a.textContent = "0.000";
+        updateACB(); // Trigger update to recalculate
+    }
 });
 
+domCache.stdQtyInput.addEventListener('change', () => {
+    checkTheoreticalQty();
+});
 
   // Show help popup on first load
     setTimeout(() => {
@@ -2024,23 +2031,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Handle window resize
         window.addEventListener('resize', updatePageNumbers);
-
-
 });
 
-// Sync std qty to ACB A-values
 function syncStdQtyToACB(value) {
-    const stdVal = new Decimal(value || 0).toFixed(3);
+    if (!value || value <= 0) {
+        domCache.acbInputs.a.forEach(input => {
+            input.value = "";
+            input.classList.remove('acb-prefilled', 'edited', 'acb-manual-input');
+        });
+        domCache.acbInputs.totals.a.textContent = "0.000";
+        return;
+    }
+
+    const stdVal = new Decimal(value).toFixed(3);
 
     domCache.acbInputs.a.forEach(input => {
         input.value = stdVal;
-        input.classList.remove('acb-manual-input');
+        input.classList.remove('acb-manual-input', 'edited');
         input.classList.add('acb-prefilled');
     });
 
-    // Update total A
-    const totalA = new Decimal(stdVal).times(domCache.acbInputs.a.length);
+    const totalA = new Decimal(stdVal).times(4); // 4 lots
     domCache.acbInputs.totals.a.textContent = totalA.toFixed(3);
+    domCache.acbInputs.totals.a.classList.add('acb-prefilled');
 }
 
 // Update when stdQty input changes
@@ -2183,23 +2196,10 @@ function closeVerifyModal() {
 }
 
 // Modify the calculate function to handle the promise
-
 async function calculate(formulaType) {
-    // Require Std Qty before any formula calculation
-    const stdVal = parseFloat(domCache.stdQtyInput.value || 0);
-    if (isNaN(stdVal) || stdVal <= 0) {
-        alert("Please enter a valid Std Qty (kg) before calculating.");
-        domCache.stdQtyInput.focus();
-        return;
-    }
-
     if (calculationCount >= CONSTANTS.MAX_CALCULATIONS) {
         alert(`Maximum of ${CONSTANTS.MAX_CALCULATIONS} calculations reached. Press F5 to reset or delete a calculation.`);
         return;
-    }
-    ...
-}
-
     }
 
     let Q, W, A;
@@ -2301,3 +2301,4 @@ async function calculate(formulaType) {
 </script>
 <!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "53e0985d4aff4da0956ce2b267a3793f"}'></script><!-- Cloudflare Pages Analytics --></body>
 </html>
+
